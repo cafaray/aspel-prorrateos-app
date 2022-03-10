@@ -1,0 +1,211 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} UI Tables {% endblock %} 
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+<!-- Specific Page JS goes HERE  -->
+
+{% block content %}
+
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- [ breadcrumb ] start -->
+        <div class="page-header">
+            <div class="page-block">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <div class="page-header-title">
+                            <h5 class="m-b-10">Ponderados</h5>
+                        </div>
+                        <ul class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>
+                            <li class="breadcrumb-item"><a href="#!">Utilidades</a></li>
+                            <li class="breadcrumb-item"><a href="/ponderados">Ponderados</a></li>
+                            <li class="breadcrumb-item"><a href="#">Ponderado detalle</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ breadcrumb ] end -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- [ Main Content ] start -->
+                <div class="row">
+                    <!-- [ basic-table ] start -->
+                    <div class="col-xl-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="d-block ">Ponderaci&oacute;n</h5>
+                                <span class="m-t-5">Detalle de valor ponderado de cuentas por pagar</span>
+                                <p>
+                                <a class="btn btn-light m-t-5" data-toggle="collapse" href="#collapseForm" role="button" aria-expanded="false" aria-controls="collapseForm">Agregar ponderaci&oacute;n</a>
+                            </p>
+                            </div>
+                            <div class="collapse" id="collapseForm">
+                                <div class="card-body">
+                                    <h5 class="d-block ">Registro valor ponderado</h5>
+                                    <span class="m-t-5">Agregar un valor ponderado en cuentas por pagar</span>        
+                                    <form>
+                                        <div class="form-group">
+                                            <label for="baseAccount">Cuenta contable</label>
+                                            <input type="text" class="form-control" id="baseAccount" name="baseAccount" aria-describedby="baseAccountHelp" placeholder="Cuenta contable">
+                                            <small id="baseAccountHelp" class="form-text text-muted">Cuenta contable asociada del elemento a ponderar</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="businessUnit">Unidad de negocio</label>                                                
+                                            <select class="form-control" name="businessUnit" id="businessUnit">
+                                                <option value="-1">SELECCIONA</option>
+                                                {% for option in businessUnits %}
+                                                <option value="{{option['idunineg']}}">{{option['dsunineg']}}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="percentage">Porcentaje</label>
+                                            <input type="text" class="form-control" id="percentage" name="percentage" aria-describedby="percentajeHelp" placeholder="Porcentaje">
+                                            <small id="percentageHelp" class="form-text text-muted">Porcentaje a ponderar, debe ser un valor menor a uno (1)</small>
+                                        </div>
+                                        <button type="button" class="btn btn-primary" onclick="addDetail()">Agregar</button>
+                                    </form>
+                                </div>                                            
+                            </div>
+                            <div class="card-block table-border-style">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Cuenta contable</th>
+                                                <th>Unidad de negocio</th>
+                                                <th>Porcentaje</th>
+                                                <th>&nbsp;</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% set items = data['data'] %}
+                                            {% for item in items %}                                            
+                                            <tr name="{{ item['id'] }}" id="ponderado_{{item['account']}}{{item['businessUnit']}}">
+                                                <td>{{ item['account'] }}</td>
+                                                <td>{{ item['businessUnit'] }}</td>
+                                                <td>
+                                                    <label id="weight{{item['account']}}{{item['businessUnitId']}}">{{ item['percentage']*100 }}</label>
+                                                    <a href="javascript:changeWeight('{{item['account']}}', '{{item['businessUnitId']}}')" style="padding-left: 10px;"><i class="feather icon-edit"></i></a>
+                                                </td>
+                                                <td>                                                    
+                                                    <a href="javascript:trash('{{item['account']}}', '{{item['businessUnitId']}}')" style="padding-left: 10px;"><i class="feather icon-trash"></i></a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="3" style="text-align: right;font-weight: 500;">
+                                                    <label id="sumWeights" >{{ data['total'] }}</label> %
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- [ basic-table ] end -->
+                </div>
+                <!-- [ Main Content ] end -->
+                        
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>    
+    $( function() {     
+        var percentage = $('#percentage').val(), 
+        businessUnit = $('#businessUnit').val(), 
+        baseAccount = $('#baseAccount').val() 
+        console.log(`percentage=${percentage}, businessUnit=${businessUnit}, baseAccount=${baseAccount}`)
+        
+    })
+
+    let currentSum = parseFloat(document.getElementById('sumWeights').innerText)
+
+    function addDetail(){
+        const xhttp = new XMLHttpRequest();
+        xhttp.onload = function () {
+            result = JSON.parse(this.responseText)
+            if(result.status==='ok'){
+                alert('Elemento agregado')
+                window.location.reload();
+            } else {
+                alert('Algo fue mal: ' + result.status)
+            }
+        }
+        xhttp.open("POST", "/api/ponderados/{{data['weight']}}/detalles", true);
+        data = '{ "baseAccount": "'+$('#baseAccount').val()+'", "businessAreaId": "'+$('#businessUnit').val()+'", "percentage": "'+$('#percentage').val() +'"}'
+        console.log('data', data)
+        xhttp.setRequestHeader("Content-type", "application/json");
+        xhttp.send(data); 
+    }
+    //alert(currentSum)
+    function trash(account, businessUnitId) {
+        // alert('trashing ' + account + " " + businessUnitId + " of element " + {{data['weight']}})
+        if(confirm('Estas seguro de eleminar el elemento?')){
+            const xhttp = new XMLHttpRequest();
+            xhttp.onload = function () {
+                result = JSON.parse(this.responseText)
+                if(result.status==='ok'){
+                    alert('Elemento eliminado')
+                    window.location.reload();
+                }
+            }
+            xhttp.open("DELETE", "/api/ponderados/{{data['weight']}}/detalles", true);
+            data = '{ "baseAccount": "'+account+'", "businessAreaId": "'+businessUnitId+'"}'
+            console.log('data', data)
+            xhttp.setRequestHeader("Content-type", "application/json");
+            xhttp.send(data); 
+        }
+    }
+    function changeWeight(account, businessUnitId) {
+        let id = account + businessUnitId
+        let currentWeight = parseFloat(document.getElementById('weight'+id).innerText)
+        //alert('total weight is: ' + currentSum + ' and specific weight is:' + currentWeight)
+        let valor=0
+        try{
+            valor = prompt('Indica el nuevo valor ponderado:', 0)
+            valor = parseFloat(valor)/100
+        } catch(err) {
+            alert(err)
+            return
+        }
+        if (valor){
+            //alert(currentSum+valor-currentWeight)
+            const xhttp = new XMLHttpRequest();
+            xhttp.onload = function() {
+                //document.getElementById('weight'+id).innerHTML = this.responseText;
+                result = JSON.parse(this.responseText)
+                if(result.status==='ok'){
+                    /*
+                    valor =parseFloat(valor*100)
+                    console.log(`${currentSum}+${valor}-${currentWeight}`, currentSum+valor-currentWeight)
+                    currentSum = currentSum+valor-currentWeight
+                    document.getElementById('sumWeights').innerText = parseFloat(currentSum)
+                    document.getElementById('weight'+id).innerText = valor
+                    */
+                    window.location.reload();
+                }
+            }
+            xhttp.open("PUT", "/api/ponderados/{{data['weight']}}/detalles", true);
+            data = '{ "baseAccount": "'+account+'", "businessAreaId": "'+businessUnitId+'", "percentage": "'+valor+'"}'
+            console.log('data', data)
+            xhttp.setRequestHeader("Content-type", "application/json");
+            xhttp.send(data); 
+        } else {
+            alert('Nothing to change')
+        }
+    }
+</script>
+{% endblock javascripts %}

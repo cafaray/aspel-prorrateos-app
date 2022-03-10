@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>jQuery UI Menu - Menú básico</title>
+<link rel="stylesheet" href="static/styles/base.css" />        
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />
+<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+
+<style>
+    .ui-menu { 
+    overflow: hidden;
+    font: 13px Arial;
+    }
+    .ui-menu .ui-menu {
+    overflow: visible !important;
+    }
+    .ui-menu > li { 
+    float: left;
+    display: block;
+    width: auto !important;
+    }
+    .ui-menu ul li {
+    display:block;
+    float:none;
+    }
+    .ui-menu ul li ul {
+    left:120px !important;
+    width:100%;
+    }
+    .ui-menu ul li ul li {
+    width:auto;
+    }
+    .ui-menu ul li ul li a {
+    float:left;
+    }
+    .ui-menu > li {
+    margin: 5px 5px !important;
+    padding: 0 0 !important;
+    }
+    .ui-menu > li > a { 
+    float: left;
+    display: block;
+    clear: both;
+    overflow: hidden;
+    }
+    .ui-menu .ui-menu-icon { 
+    margin-top: 0.3em !important;
+    }
+    .ui-menu .ui-menu .ui-menu li { 
+    float: left;
+    display: block;
+    }
+    </style>
+    
+    <script>
+    $(function () {
+    $("#menu").menu({position: {at: "left bottom"}});;
+    });
+    
+    </script>
+
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="http://biotecsa.com"><img src="static/images/biologo.png" height="100px" alt="Biotecsa" /></a>        
+        <span class="navbar-text">
+          {% block usuario %}{% endblock %}
+          &nbsp; &nbsp; &nbsp;<a href="/logout">Salir</a>
+        </span>
+    </nav>
+<div style="position: absolute; top: 120px; left: 30px; z-index: 100">
+    <ul id="menu">
+        <li>
+          <a href="#">P&oacute;lizas</a>
+          <ul>
+            <li>              
+                <a href="/home">P&oacute;liza de ventas</a>              
+            </li>
+            <li>
+                <a href="/compras">P&oacute;liza de compras</a>
+            </li>            
+            <li>
+                <a href="/gastos">P&oacute;liza de gastos</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a href="#">Ventas</a>
+          <ul>
+            <li>
+                <a href="/dventas">Diario de ventas</a>
+            </li>                        
+            <li>
+              <a href="/rventas">Reporte ventas</a>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a href="#">Utilidades</a>
+          <ul>
+            <li >
+              <a href="/unidades">Unidades de negocio</a>
+            </li>
+            <li >
+              <a href="/ponderaciones">Ponderaciones</a>
+            </li>            
+            <li >
+              <a href="/cuentasi">Cuentas impuesto</a>
+            </li>            
+            <li >
+              <a href="/usuarios">Usuarios</a>
+            </li>                            
+          </ul>
+        </li>                       
+      </ul>
+</div>
+{% block content %}    
+    {% endblock %}
+</body>
+</html>

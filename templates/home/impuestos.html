@@ -1,0 +1,107 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} UI Tables {% endblock %} 
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+<!-- Specific Page JS goes HERE  -->
+
+{% block content %}
+
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- [ breadcrumb ] start -->
+        <div class="page-header">
+            <div class="page-block">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <div class="page-header-title">
+                            <h5 class="m-b-10">Ponderados</h5>
+                        </div>
+                        <ul class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>
+                            <li class="breadcrumb-item"><a href="#!">Utilidades</a></li>
+                            <li class="breadcrumb-item"><a href="javascript:">Impuestos</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ breadcrumb ] end -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- [ Main Content ] start -->
+                <div class="row">
+                    <!-- [ basic-table ] start -->
+                    <div class="col-xl-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="d-block ">Cuentas impuesto</h5>
+                                <span class="m-t-5">Aociaci&oacute;n de cuentas contables a impuestos</span>
+                            </div>
+                        </div>                                                
+                        <div class="card-block table-border-style">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Impuesto</th>                                                                                        
+                                            <th>Cuenta contable</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in data %}                                            
+                                        <!-- <tr name="{{ item['id'] }}" id="ponderado_{{item['id']}}" onclick="location.replace('/ponderado_detalle?weighted={{item['id']}}');"></tr> -->
+                                        <tr name="{{ item['id'] }}" id="cuenta_{{item['id']}}">
+                                            <td>{{ item['impuesto'] }}</td>
+                                            <td>
+                                                {{ item['cuenta'] }}
+                                                <a href="javascript:changeBaseAccount('{{item['id']}}', '{{ item['impuesto'] }}')" style="padding-left: 10px;"><i class="feather icon-edit"></i></a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- [ basic-table ] end -->
+                </div>
+                <!-- [ Main Content ] end -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+function changeBaseAccount(id, description) {
+    let baseAccount=''
+    baseAccount = prompt('Indica el nuevo valor de cuenta contable:', '1234-567-890')        
+    if (baseAccount){
+        const xhttp = new XMLHttpRequest();
+        xhttp.onload = function() {
+            //document.getElementById('weight'+id).innerHTML = this.responseText;
+            result = JSON.parse(this.responseText)
+            if(result.status==='ok'){
+                alert('Se ha actualizado el valor correctamente')
+                window.location.reload();
+            } else {
+                alert('Algo malo paso y no se actualizo el valor.')
+            }
+        }
+        xhttp.open("PUT", "/api/impuestos/"+id, true);
+        data = '{ "account": "'+baseAccount+'", "description": "'+description+'"}'
+        console.log('data', data)
+        xhttp.setRequestHeader("Content-type", "application/json");
+        xhttp.send(data); 
+    } else {
+        alert('Nothing to change')
+    }
+}
+</script>
+{% endblock javascripts %}

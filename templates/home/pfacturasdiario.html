@@ -1,0 +1,160 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} UI Tables {% endblock %} 
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+<!-- Specific Page JS goes HERE  -->
+
+{% block content %}
+
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- [ breadcrumb ] start -->
+        <div class="page-header">
+            <div class="page-block">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <div class="page-header-title">
+                            <h5 class="m-b-10">Pólizas de diario</h5>
+                        </div>
+                        <ul class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>                            
+                            <li class="breadcrumb-item"><a href="#">P&oacute;liza ventas</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ breadcrumb ] end -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- [ Main Content ] start -->
+                <div class="row">
+                    <!-- [ basic-table ] start -->
+                    <div class="col-xl-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="d-block ">P&oacute;lizas de venta </h5>
+                                <span class="m-t-5">Revisi&oacute;n de las p&oacute;lizas de venta para su procesamiento </span>
+                                <div style="display: block;">
+                                    <form method="GET">
+                                        <table class="table table-hover">
+                                            <tr>
+                                                <td colspan="10px"><label for="datefrom">Desde</label></td>
+                                                <td colspan="10px">
+                                                    <input type="date" name="datefrom" id="datefrom">
+                                                </td>
+                                                <td colspan="5" style="text-align: right;">
+                                                    <button type="button" class="btn btn-primary" onclick="search()">Cargar</button>
+                                                </td> 
+                                            </tr>
+                                        </table>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-block table-border-style">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Documento</th>
+                                            <th>Clave Cliente</th>
+                                            <th>Estatus</th>
+                                            <th>Fecha</th>
+                                            <th>Importe</th>
+                                            <th>Impuesto 3</th>
+                                            <th>Impuesto 4</th>
+                                            <th>Tipo cambio</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in data %}                                            
+                                        <tr name="{{ item['CVE_DOC'] }}" id="ponderado_{{item['CVE_DOC']}}">
+                                            <td>{{ item['CVE_DOC'] }}</td>
+                                            <td>{{ item['CVE_CLPV'] }}</td>
+                                            <td>{{ item['ESTATUS'] }}</td>
+                                            <td>{{ item['FECHA_DOC'] }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['IMPORTE']) }}</td>                                            
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['IEPS']) }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['IVA']) }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['TIPO_CAMBIO']) }}</td>                                             
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="8">
+                                                <div style="float: left;">
+                                                    <span class="m-t-5">Folio siguiente: </span>
+                                                    <label id = "number_invoice" style="margin: 5px  ; color: blue; font-weight: bolder;font-style: oblique;">{{ next_folio }}</label>
+                                                </div>
+                                                <div style="float: right;">
+                                                    <button type="button" class="btn btn-secondary" onclick="clean()">Limpiar</button>
+                                                    <button type="button" class="btn btn-primary" onclick="process()">Procesar</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tfoot>                                     
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                <!-- [ basic-table ] end -->
+                </div>
+                <!-- [ Main Content ] end -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+    function search(){
+        dateFrom = document.getElementById('datefrom').value
+        //alert('Querying data from '+ dateFrom )
+        location.replace('/pfacturasdiario?datefrom='+dateFrom)
+    }
+    function clean(){
+        location.replace('/pfacturasdiario')
+    }
+    function process() {        
+        if (confirm('Estas seguro de procesar las facturas listadas?')){
+            dateFrom = document.getElementById('datefrom').value
+            const numberInvoice = document.getElementById('number_invoice').innerText
+            const xhttp = new XMLHttpRequest()
+            xhttp.onload = function() {
+                console.log('===>result.response:  ' + this.status + ' ' + this.readyState)
+                if(this.status=='200'){
+                    // console.log('this.responseText', this.responseText)
+                    result = JSON.parse(this.responseText)
+                    if (result.status==='ok'){
+                        alert(result.details)
+                        location.replace('/pfacturasdiario')
+                    } else {
+                        let mensaje = ''
+                        if (result.details){
+                            mensaje = result.details
+                        }
+                        alert('Algo ha ocurrido y no se completo la petición. ' + mensaje)
+                    }
+                } else {
+                    alert('Ha ocurrido un fallo al procesar la petición: ' + this.status)
+                }
+                $("#overlay").fadeOut(300);
+            }            
+            xhttp.open("POST", "/api/facturasdiario", true)            
+            data = '{"dateFrom":"{{ date_from }}", "numberInvoice":' + numberInvoice + '}'
+            console.log('sending data:' + data)
+            xhttp.setRequestHeader("Content-type", "application/json")
+            xhttp.send(data)
+        }     
+    }
+</script>
+{% endblock javascripts %}
