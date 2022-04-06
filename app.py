@@ -7,15 +7,19 @@ from unittest import result
 from urllib import response
 from urllib.parse import urlparse
 from urllib.request import Request
-# import logging.config
+import logging.config
 from flask import Flask, redirect, url_for, render_template, request, session, flash, jsonify
 import requests
+
+from requests.models import Response
 import json
 from jinja2 import TemplateNotFound
 from datetime import datetime, timedelta
 # import calendar
 from openpyxl import Workbook
 from decouple import config
+
+import xml.etree.ElementTree as ET
 
 app = Flask(__name__) # , template_folder='templates', static_folder='static')
 # logging_conf_path = os.path.normpath(os.path.join(os.path.dirname(__file__), 'logging.conf'))
@@ -26,13 +30,336 @@ app = Flask(__name__) # , template_folder='templates', static_folder='static')
 app.secret_key = "c29ydGUuYmlvdGVjc2EuY29tL2FkbWluCg=="
 app.permanent_session_lifetime= timedelta(hours=2)
 app.config['EXPLAIN_TEMPLATE_LOADING'] = True
-
 FILE_LOCATION = config('FILE_LOCATION')
 BASE_URL_COI = config('BASE_URL_COI')
 BASE_URL_SAE = config('BASE_URL_SAE')
 BASE_URL_PONDERADOS = config('BASE_URL_PONDERADOS')
+UPLOAD_FOLDER = config('UPLOAD_FOLDER' )
+RECORD_STATUS_FOLDER = config('RECORD_STATUS_FOLDER')
 
-print(f'Working with \n * FILE_LOCATION: {FILE_LOCATION}\n * BASE_URL_COI: {BASE_URL_COI}\n * BASE_URL_SAE: {BASE_URL_SAE}\n * BASE_URL_PONDERADOS: {BASE_URL_PONDERADOS}')
+status_process = []
+
+print(f'''WORKING WITH NEXT PARAMS: 
+    * FILE_LOCATION: {FILE_LOCATION}
+    * BASE_URL_COI: {BASE_URL_COI}
+    * BASE_URL_SAE: {BASE_URL_SAE}
+    * BASE_URL_PONDERADOS: {BASE_URL_PONDERADOS}
+    * TEMPORARY_FILES: {UPLOAD_FOLDER}
+    ''')
+
+@app.route('/api/gastos/cfdi', methods = ['GET', 'POST'])
+def anexa_cfdi():
+    try:
+        if request.method == 'POST':
+            f = request.files['file']
+            filename = os.path.join(UPLOAD_FOLDER, f.filename)
+            print('file will be saved in:', filename)
+            f.save(filename)
+
+            # set search params            
+            XML_GASTOS_PREFIJO = config('XML_GASTOS_PREFIJO')
+            XML_GASTOS_COMPROBANTE=config('XML_GASTOS_COMPROBANTE')
+            XML_GASTOS_EMISOR=config('XML_GASTOS_EMISOR')
+            XML_GASTOS_RECEPTOR=config('XML_GASTOS_RECEPTOR')
+            XML_GASTOS_COMPLEMENTO=config('XML_GASTOS_COMPLEMENTO')
+            XML_GASTOS_COMPLEMENTO_TIMBRE_FISCAL=config('XML_GASTOS_COMPLEMENTO_TIMBRE_FISCAL')
+            XML_GASTOS_TIMBRE_FISCAL_PREFIJO=config('XML_GASTOS_TIMBRE_FISCAL_PREFIJO') 
+            print(f'''Working with xml search params:
+            PREFIX: {XML_GASTOS_PREFIJO}
+            COMPROBANTE: {XML_GASTOS_COMPROBANTE}
+            EMISOR: {XML_GASTOS_EMISOR}
+            RECEPTOR: {XML_GASTOS_RECEPTOR}
+            COMPLEMENTO: {XML_GASTOS_COMPLEMENTO}
+            TIMBRE_FISCAL_DIGITAL: {XML_GASTOS_COMPLEMENTO_TIMBRE_FISCAL}
+            ''')
+
+            # parse an xml file by name
+            tree = ET.parse(filename)
+            root = tree.getroot()
+            # By default, the prefix should be `cfdi`, but it could be other one:
+            if 'cfdi:' in root.tag:
+                search_prefix_by = 'cfdi:'
+            else:
+                search_prefix_by = XML_GASTOS_PREFIJO                
+            print(f'searching prefix:', search_prefix_by)
+            is_cfdi = search_prefix_by in root.tag
+            print('isCFDI:',  is_cfdi)
+            record_cfdi = {}
+            if is_cfdi:
+                # document attributes 
+                #document_attributes = ['serie', 'folio', 'fecha', 'formaDePago', 'subTotal', 'descuento', 'TipoCambio', 'Moneda', 'total', 'metodoDePago', 'LugarExpedicion']
+                #comprobante=root.attrib
+                #for attr in document_attributes:
+                #    record_cfdi[attr] = comprobante[attr]
+
+                # person attribute
+                #person_attributes = ['nombre', 'rfc']
+                #emisor = root.find(search_prefix_by+XML_GASTOS_EMISOR).attrib
+                #for attr in person_attributes:
+                #    record_cfdi['emisor_'+attr] = emisor[attr]
+                
+                #receptor = root.find(search_prefix_by+XML_GASTOS_RECEPTOR).attrib
+                #for attr in person_attributes:
+                #    record_cfdi['receptor_'+attr] = receptor[attr]
+
+                # complement attributes: Timbre fiscal digital                
+                complement_attribute = ['UUID', 'FechaTimbrado']                
+                complemento = root.find(search_prefix_by+XML_GASTOS_COMPLEMENTO)
+                tfd = complemento.find(XML_GASTOS_TIMBRE_FISCAL_PREFIJO+XML_GASTOS_COMPLEMENTO_TIMBRE_FISCAL).attrib
+                for attr in complement_attribute:
+                    record_cfdi[attr] = tfd[attr]
+                print('cfdi translated:', record_cfdi)
+                return {'status': 'ok', 'cfdi': record_cfdi}
+    except Exception as e:
+        print('Exception reading file', e)
+        return {'status': 'ko', 'message':e.args[0]}
+
+
+def save_status_process(id, req, res):
+    status_process.append({'id': id, 'request': req, 'response': res})
+
+def insert_status_process(status_process):
+    ts = datetime.now().strftime("%Y%m%d%H%M%S")
+    file_status = open(os.path.join(RECORD_STATUS_FOLDER, ts + '.txt'), 'a')
+    for s in status_process:
+        file_status.write(s)
+    status_process = []
+
+@app.route('/api/gastos/polizas', methods=['POST'])
+def gastos_polizas():
+    status_process = []
+    TIPO_POLIZA = 'Dr'
+    IMPORTE_CARGO_CERO = 0
+    IMPORTE_ABONO_CERO = 0
+    CUENTA_IMPUESTO = "1200-001-000"
+    DESCRIPCION_IMPUESTO_IVAIEPS = "IVA ACREDITABLE PENDIENTE DE PAGO"
+
+    CUENTA_IMPUESTO_CLAVE = 1
+    CUENTA_RETENCION_ISR_CLAVE = 2
+    CUENTA_RETENCION_IVA_CLAVE = 3
+       
+    CUENTA_RETENCIONES_HONORARIOS_ISR = "2150-001-001"
+    DESCRIPCION_IMPUESTO_RETENCIONES_HONORARIOS_ISR = "RETENCION 10% ISR"
+    
+    CUENTA_RETENCIONES_HONORARIOS_IVA = "2150-001-004"
+    DESCRIPCION_IMPUESTO_RETENCIONES_HONORARIOS_IVA = "RETENCION 10% IVA"
+    
+    CUENTA_RETENCIONES_HONORARIOS = "2150-007-000"
+    DESCRIPCION_IMPUESTO_RETENCIONES_HONORARIOS = "RETENCION"
+
+    CUENTA_PROVEEDORES = "2110-003-001"
+    DESCRIPCION_CUENTA_PROVEEDORES = "PROVEEDORES"
+
+    try:
+        payload = request.get_json()
+        print('payload received to process invoice: ', payload)
+        save_status_process('payload received', payload, 'n/a')
+        documento = payload['document']
+        if 'cfdi' in payload: 
+            uuid = payload['cfdi']['UUID']
+            es_cfdi = 1
+        else: 
+            es_cfdi = 0
+            uuid = ''
+        detalles = payload['weights']
+
+        fecha_aplicacion = documento['appliedDate']
+        df = datetime.strptime(fecha_aplicacion, '%Y-%m-%d')
+        ejercicio = df.year
+        periodo = df.month
+        save_status_process('search folio', f'TIPO_POLIZA={TIPO_POLIZA}, ejercicio={ejercicio}, periodo={periodo}', 'n/a')
+        folio = siguiente_folio(TIPO_POLIZA, ejercicio, periodo)
+        save_status_process('found folio', f'TIPO_POLIZA={TIPO_POLIZA}, ejercicio={ejercicio}, periodo={periodo}', f'folio: {folio}')
+        cargo_total = 0
+        if(folio['folio']>0):
+            next_folio = folio['folio']
+        else:
+            next_folio = 'Imposible determinar un folio para: {0} {1}-{2}'.format('Dr', ejercicio, periodo)
+            raise Exception('Imposible determinar un folio para: {0} {1}-{2}'.format('Dr', ejercicio, periodo))
+            
+        dia = datetime.now().day
+        descripcion = f'{documento["description"]} {documento["appliedDate"]} {documento["supplier"]} {documento["reference"]}'
+        auxiliares = []
+        save_status_process('defining auxiliars', detalles, 'n/a')
+        for detalle in detalles:
+            cargo = detalle['value']
+            cargo_total = cargo_total + cargo
+            abono = IMPORTE_ABONO_CERO
+            cuenta_contable = detalle['id'][0:12]
+            tipo_cambio = documento['exchangeRate']
+            unidad_negocio = detalle['id'][15:]
+            auxiliares.append({'cuentaContable':cuenta_contable, 'unidadNegocio':unidad_negocio, 'descripcion':descripcion, 'tipoCambio':tipo_cambio, 'cargo':cargo, 'abono':abono})
+        
+        # Manejo para los impuestos
+        if documento['tax4']>0:
+            cargo = documento['tax4']
+            cargo_total = cargo_total + cargo
+            abono = IMPORTE_ABONO_CERO
+            valor_cuenta = impuesto(CUENTA_IMPUESTO_CLAVE)
+            if valor_cuenta:
+                cuenta_contable = valor_cuenta['cuenta']
+                descripcion = valor_cuenta['impuesto']
+            else:
+                cuenta_contable = CUENTA_IMPUESTO
+                descripcion = DESCRIPCION_IMPUESTO_IVAIEPS            
+            auxiliares.append({'cuentaContable':cuenta_contable, 'unidadNegocio':'', 'descripcion':descripcion, 'tipoCambio':1, 'cargo':cargo, 'abono':abono})
+
+        if documento['taxes']>0:
+            if documento['tax1']>0:
+                abono = documento['tax1']
+                valor_cuenta = impuesto(CUENTA_RETENCION_ISR_CLAVE)
+                if valor_cuenta:
+                    cuenta_contable = valor_cuenta['cuenta']
+                    descripcion = valor_cuenta['impuesto']
+                else:
+                    cuenta_contable = CUENTA_RETENCIONES_HONORARIOS_ISR
+                    descripcion = DESCRIPCION_IMPUESTO_RETENCIONES_HONORARIOS_ISR
+                auxiliares.append({'cuentaContable':cuenta_contable, 'unidadNegocio':'', 'descripcion':descripcion, 'tipoCambio':1, 'cargo':IMPORTE_CARGO_CERO, 'abono':abono})
+            if documento['tax2']>0:
+                abono = documento['tax2']
+                valor_cuenta = impuesto(CUENTA_RETENCION_ISR_CLAVE)
+                if valor_cuenta:
+                    cuenta_contable = valor_cuenta['cuenta']
+                    descripcion = valor_cuenta['impuesto']
+                else:
+                    cuenta_contable = CUENTA_RETENCIONES_HONORARIOS_ISR
+                    descripcion = DESCRIPCION_IMPUESTO_RETENCIONES_HONORARIOS_ISR
+                auxiliares.append({'cuentaContable':cuenta_contable, 'unidadNegocio':'', 'descripcion':descripcion, 'tipoCambio':1, 'cargo':IMPORTE_CARGO_CERO, 'abono':abono})
+
+            if documento['tax3']>0:
+                abono = documento['tax3']
+                valor_cuenta = impuesto(CUENTA_RETENCION_IVA_CLAVE)
+                if valor_cuenta:
+                    cuenta_contable = valor_cuenta['cuenta']
+                    descripcion = valor_cuenta['impuesto']
+                else:
+                    cuenta_contable = CUENTA_RETENCIONES_HONORARIOS_IVA 
+                    descripcion = DESCRIPCION_IMPUESTO_RETENCIONES_HONORARIOS_IVA
+                auxiliares.append({'cuentaContable':cuenta_contable, 'unidadNegocio':'', 'descripcion':descripcion, 'tipoCambio':1, 'cargo':IMPORTE_CARGO_CERO, 'abono':abono})
+                
+        # anexa detalle en cuenta de proveedores 
+        # print('====>', cargo_total, '-', documento['taxes'], '  = ', cargo_total - documento['taxes'])
+        auxiliares.append({'cuentaContable': CUENTA_PROVEEDORES, 'unidadNegocio':'', 'descripcion':DESCRIPCION_CUENTA_PROVEEDORES, 'tipoCambio':1, 'cargo':IMPORTE_CARGO_CERO, 'abono':cargo_total-documento['taxes']})
+        save_status_process('defining auxiliars', f'tax4: {documento["tax4"]}, taxes: {documento["taxes"]}', auxiliares)
+        poliza = {
+            'numeroFolio': next_folio, 'descripcion':descripcion, 'tipo':TIPO_POLIZA, 'numeroDia': dia, 'fecha': fecha_aplicacion,
+            'periodo': periodo, 'ejercicio': ejercicio, 'cfdi': es_cfdi, 'uuid': uuid,
+            'auxiliares': auxiliares
+        }
+        print('invoice prepared to be inserted:', poliza)
+        save_status_process('invoice prepared to be inserted:', poliza, 'n/a')
+                
+        response = inserta_poliza_coi(poliza)
+        save_status_process('invoice prepared to be inserted:', poliza, response)
+        print('insert poliza and auxiliar results in:', response) 
+        if 'auxiliars' in response and response['auxiliars']>0:
+            save_status_process('actualiza_contabilizado:', f'reference: {documento["reference"]}, supplierId: {documento["supplierId"]}, chargeId: {documento["chargeId"]}, conceptId: {documento["conceptId"]}', 'n/a')
+            response = actualiza_contabilizado(documento['reference'], documento['supplierId'], documento['chargeId'], documento['conceptId'])
+            save_status_process('actualiza_contabilizado:', f'reference: {documento["reference"]}, supplierId: {documento["supplierId"]}, chargeId: {documento["chargeId"]}, conceptId: {documento["conceptId"]}', response)
+            save_status_process('actualiza_folio:', f'tipo poliza: {TIPO_POLIZA}, ejercicio: {ejercicio}, periodo: {periodo}, folio: {next_folio}', 'n/a')
+            response = actualiza_folio(TIPO_POLIZA, ejercicio, periodo, next_folio)
+            save_status_process('actualiza_folio:', f'tipo poliza: {TIPO_POLIZA}, ejercicio: {ejercicio}, periodo: {periodo}, folio: {next_folio}', response)
+            insert_status_process(status_process)
+            return {'status': 'ok', 'data':payload}
+        else:
+            return {'status': 'ko', 'message':f'Algo ha ido mal y no se ha insertado la poliza correctamente. {response}'}
+    except Exception as e:
+        print(f'Exception in {request.method} gastos_polizas:', e)
+        insert_status_process(status_process)
+        return {'status': 'ko', 'message':e.args[0]}
+
+def inserta_poliza_coi(poliza):
+    try:
+        url = f'{BASE_URL_COI}polizas'
+        poliza_coi = { 
+            'TIPO_POLI': poliza['tipo'], 
+            'NUM_POLIZ': str(poliza['numeroFolio']), 
+            'PERIODO': poliza['periodo'], 
+            'EJERCICIO': poliza['ejercicio'], 
+            'FECHA_POL': poliza['fecha'], 
+            'CONCEP_PO': poliza['descripcion'],
+            'NUM_PART': len(poliza['auxiliares']), 
+            'TIENEDOCUMENTOS': poliza['cfdi'], 
+            'UUID': poliza['uuid'], 
+            'PROCCONTAB': poliza['ejercicio'],   
+        }
+        response = invoke(url, 'POST', json.dumps(poliza_coi), 'application/json')
+        save_status_process('inserta_poliza_coi:', '', response)
+        if response.ok:
+            result =response.json()
+            print('response for inserted invoice:', result['NUM_POLIZ'])
+            save_status_process('inserta_poliza_coi:', 'poliza_coi', result)
+            poliza['numeroFolio'] = result['NUM_POLIZ']
+            # add auxiliar
+            url = f'{url}/auxiliares'
+            i = 1            
+            for detalle in poliza['auxiliares']:
+                if detalle['abono']>0:
+                    debe_haber = 'H'
+                else:
+                    debe_haber = 'D'
+                auxiliar = {
+                    'TIPO_POLI': poliza['tipo'],
+                    'NUM_POLIZ': poliza['numeroFolio'],
+                    'NUM_PART': i,
+                    'PERIODO':poliza['periodo'],
+                    'EJERCICIO':poliza['ejercicio'],
+                    'NUM_CTA':detalle['cuentaContable'],
+                    'FECHA_POL': poliza['fecha'],
+                    'CONCEP_PO': detalle['descripcion'],
+                    'DEBE_HABER': debe_haber,
+                    'MONTOMOV': round(detalle['cargo'] + detalle['abono'], 2),
+                    'NUMDEPTO': detalle['unidadNegocio'],
+                    'TIPOCAMBIO': detalle['tipoCambio'],                
+                    'ORDEN':i
+                }
+                # inserta auxiliar
+                save_status_process('inserta_auxiliar_coi:', auxiliar, '')
+                aresponse = invoke(url, 'POST', json.dumps(auxiliar), 'application/json')
+                save_status_process('inserta_auxiliar_coi:', auxiliar, aresponse)
+                if aresponse.ok:
+                    print('Auxiliar insertado: ', auxiliar)
+                else:
+                    print('El auxiliar no fue insertado: ', auxiliar)
+                i = i + 1
+            return {'status': 'ok', 'id': poliza['numeroFolio'], 'auxiliars': i}
+        else:
+            raise 'La poliza no ha sido insertada: ' + poliza_coi 
+    except Exception as e:
+        print(f'Exception in inserta_poliza_coi:', e)
+        raise e
+
+def actualiza_folio(tipo_poliza, ejercicio, periodo, folio):
+    try:
+        payload = {'tipo': tipo_poliza, 'periodo': periodo, 'folio': folio}
+        url = f'{BASE_URL_COI}folios/{ejercicio}'
+        response = invoke(url, 'PUT', json.dumps(payload), 'application/json')
+        if response and response.ok:
+            result = response.json()
+            print('response:', result)
+            return result
+        else:
+            print('response:', response.status_code)
+            return {'status': 'ko'}
+    except Exception as e:
+        print(f'Exception in actualiza_folio:', e)
+        raise e
+
+def actualiza_contabilizado(referencia, clave_proveedor, cargo, concepto):
+    try:
+        payload = {'reference': referencia, 'supplierId': clave_proveedor, 'chargeId': cargo, 'conceptId': concepto}
+        url = f'{BASE_URL_SAE}pagos/'
+        response = invoke(url, 'PUT', json.dumps(payload), 'application/json')
+        if response and response.ok:
+            result = response.json()
+            print('response:', result)
+            return {'status': 'ok', 'message': result}
+        else:
+            print('response: ', response.status_code)
+            return {'status': 'ko', 'message': response}
+    except Exception as e:
+        print(f'Exception in actualiz contabilizado:', e)
+        raise e
 
 @app.route('/api/impuestos/<id>', methods=['PUT'])
 def update_impuesto(id: int):
@@ -57,7 +384,7 @@ def update_impuesto(id: int):
         return e
 
 
-@app.route('/api/ponderados/<id>/detalles', methods=['POST', 'PUT', 'DELETE'])
+@app.route('/api/ponderados/<id>/detalles', methods=['POST', 'PUT', 'DELETE', 'GET'])
 def update_ponderado(id:int):
     try:        
         #payload = {'account':account, 'business_unit_id':businessUnitId, 'weighted': weighted}
@@ -102,9 +429,69 @@ def update_ponderado(id:int):
             else:
                 print('response', response.status_code)
                 return {'status':'ko'}
-    except Exception as e:
+        if (request.method=='GET'):             
+            # print('headers:\n', request.headers)
+            doc = request.headers['X-DOC']
+            # print('doc', doc, '\nlen(doc)', len(doc))
+            if len(doc)==0:                
+                raise Exception('Document not specified')
+            #print('getting document:-', doc,'-')
+            document = documento_pago(doc)
+            #print('found document:', len(document))
+            if not document:
+                raise Exception('Document not found')
+            url = f'{BASE_URL_PONDERADOS}/ponderados/{id}/details'
+            response=invoke(url, 'GET')            
+            if (response and response.ok):
+                result = response.json()  
+                if (isinstance(result, list) and result[0]):
+                    #print(result)
+                    result = aplica_ponderacion(result, document[0])              
+                    return jsonify(result)
+                else:                    
+                    return response.text
+            else:
+                print('response', response.status_code)
+                return {'status':'ko'}
+    except Exception as e:        
         print(f'Exception in {request.method} update_ponderado:', e)
-        return e    
+        response = Response()
+        response.status_code = 500 
+        response._content = {"status": "ko", "error": e.args[0]}
+        return response
+
+def aplica_ponderacion(ponderados, document):
+    try:
+        total = 0
+        account_prev = ''
+        response = list()
+        weights = list()
+        account_prev = ponderados[0]['account']
+        i = 0
+        # {'id': 36, 'account': '6500-043-001', 'businessUnitId': 4, 'businessUnit': 'Textil', 'percentage': 1}
+        for ponderado in ponderados:
+            account = ponderado['account']
+            if account!=account_prev:                    
+                account_prev = account
+                response.append({'account': account_prev, 'weights': weights})
+                weights = list()
+            business_unit_id = ponderado['businessUnitId']
+            business_unit = ponderado['businessUnit']
+            percentage = ponderado['percentage']
+            ponderacion = document['IMPORTE'] * percentage
+            weights.append({'id': f'{account_prev}-X0{str(business_unit_id)}', 'businessUnitId': business_unit_id, 'businessUnit':business_unit, 'percentage': percentage, 'value':ponderacion })
+            i = i + 1
+            total = total + ponderacion
+        response.append({'account': account_prev, 'weights': weights})        #response.append({'account': account_prev, 'wiegths': weights})
+        #print(f'account: {account}, value:{ponderacion}, businessUnit:{business_unit}, businessUnitId: {business_unit_id}, percentage:{percentage}')
+        #total = round(total, 2)
+        result = {'total': total,  'value': document['IMPORTE'], 'document': document['DOCTO'], 'details': response}
+        #print('total', total, 'validate:', total==document['IMPORTE'])
+        # print(result)
+        return result
+    except Exception as e:
+        print('Some exception while evaluating weights on aplica_ponderacion:', e)
+        raise e
 
 def genera_excel_poliza(data):
     try:        
@@ -180,7 +567,7 @@ def genera_poliza_diario(documents, date_from, number_invoice):
             else:
                 detalle_departamento['cuenta_contable'] = CUENTA_DEPARTAMENTO_IMPUESTO_0                    
             detalle_departamento['departamento'] = document['items'][0]['CENTRO_COSTOS'] # first item detailed in document gives the value
-            detalle_departamento['concepto'] = "Doc. " + document['DESCRIPCION'] + " " + document['FECHA_DOC'] + " " + document['NOMBRE']
+            detalle_departamento['concepto'] = "Doc. " + document['IDENTIFICADOR'] + " " + document['FECHA_DOC'] + " " + document['NOMBRE']
             detalle_departamento['tipo_cambio'] = document['TIPO_CAMBIO']
             detalle_departamento['cargo'] = 0
             detalle_departamento['abono'] = document['TOTAL']
@@ -215,6 +602,7 @@ def procesa_diario_ventas():
         payload = request.get_json()
         #print('payload:', payload)
         date_from = datetime.strptime(payload['dateFrom'], '%Y-%m-%d').date()
+        date_to=date_from   
         number_invoice = payload['numberInvoice']
         #print('date to query:', date_from)
         if (request.method=='POST'):
@@ -347,6 +735,21 @@ def procesa_ventas():
         print(f'Exception in {request.method} procesa_ventas:', e)
         return {'status': 'ko', 'details': f'Exception in method {str(e)}'}
 
+@app.route('/api/ponderados/<id>', methods=['GET'])
+def valores_ponderados(weight_id:int):
+    try:
+        url = f'{BASE_URL_PONDERADOS}/ponderados/{weight_id}/details'
+        response = invoke(url,'GET')
+        if response and response.ok:
+            return response.json()
+        else:
+            print('response', response)
+            return []        
+    except Exception as e:
+        print(f'Exception getting valores_ponderados {weight_id}', e)
+        raise e
+
+
 @app.route('/api/ponderados', methods=['POST', 'DELETE'])
 def update_ponderados():
     try:        
@@ -415,7 +818,7 @@ def validate_user(email: str, password: str):
         return False
 
 def invoke(url, method, payload=None, content_type='application/json'):
-    try:     
+    try:             
         token = session.get('token', '')
         user_id = session.get('userId', '')
         headers = {'x-auth':token, 'userId': user_id, 'Content-Type': content_type}
@@ -584,6 +987,22 @@ def ultimo_periodo():
         print(f'Exception {request.method} ultimo_periodo:', e)
         return e
 
+def impuesto(id):
+    try:
+        url = f'{BASE_URL_PONDERADOS}/cuentas/{id}'
+        response = invoke(url, 'GET')
+        #print('response', response)
+        if (response.ok):
+            result = response.json()
+            print(f'result impuestos by id={id} ===> ', result)
+            return result[0]
+        else:
+            print('response.status_code:', response.status_code)
+            return None
+    except Exception as e:
+        print(f'Exception getting impuestos by id={id}:', e)
+        return None
+
 def impuestos():
     try:
         if request.method=='GET':
@@ -614,7 +1033,7 @@ def proveedores():
                 return result
             else:
                 print('response.status_code:', response.status_code)
-                return []        
+                return [{"CLAVE":-1, "NOMBRE":"NO SE LOCALIZARON PROVEEDORES"}]        
     except Exception as e:
         print('Exception getting proveedores:', e)
         return e
@@ -685,6 +1104,30 @@ def documentos_venta_sae(date_from, date_to):
             return []        
     except Exception as e:
         print('Exception getting facturas: ', e)
+        raise e
+
+def documentos_pago_sae(date_from, supplier):
+    try:
+        print(f'date_from: {date_from}, supplier: {supplier}')
+        supplier_id = -1
+        try:            
+            supplier_id=int(supplier)
+        except ValueError as e:
+            print(f'Probably not supplier given, value {supplier} can not be converted to int.\nValue error:', e)
+        params = f'?appliedDate={date_from}'
+        if (supplier_id>0):
+            url = f'{BASE_URL_SAE}pagos/proveedores/{supplier}{params}'
+        else:
+            url = f'{BASE_URL_SAE}pagos{params}'
+        response = invoke(url, 'GET')
+        if (response and response.ok):
+            result = response.json()            
+            return result
+        else:
+            print('response:', response.status_code)
+            return []
+    except Exception as e:
+        print('Exception getting pagos: ', e)
         raise e
 
 def close_session(token):
@@ -776,6 +1219,90 @@ def polizas_compras():
     divisionscoi = departamentos_coi() 
     lastperiod = ultimo_periodo() 
     return render_template('home/pcompras.html', data=data, doctypescoi=doctypescoi, doctypessae=doctypessae, baseaccounts=baseaccounts, divisionscoi=divisionscoi, lastperiod=lastperiod)
+
+@app.route('/pagos', methods=['GET'])
+def ponderacion_pagos():
+    try:
+        date_from= request.args.get('datefrom')
+        supplier = request.args.get('supplier')
+        if date_from:
+            data = documentos_pago_sae(date_from, supplier)
+        else:
+            data = []
+        suppliers = proveedores()
+        return render_template('home/pagos.html', data=data, suppliers=suppliers)
+    except Exception as e:
+        return render_template('home/page-500', error = e)
+
+def documento_pago(document_id):
+    try:
+        url = f'{BASE_URL_SAE}pagos/{document_id}'
+        response = invoke(url,'GET')
+        if response and response.ok:
+            return response.json()
+        else:
+            print('response', response)
+            return []
+    except Exception as e:
+        print(f'Exception getting documento_pago {document_id}', e)
+        raise e
+
+def valores_ponderacion(supplier_id):
+    try:
+        url = f'{BASE_URL_PONDERADOS}/ponderados/proveedores/{supplier_id}'
+        response = invoke(url,'GET')
+        if response and response.ok:
+            return response.json()
+        else:
+            print('response', response)
+            return []        
+    except Exception as e:
+        print(f'Exception getting valores_ponderacion {supplier_id}', e)
+        raise e
+
+def valor_ponderacion(weight_id):
+    try:
+        url = f'{BASE_URL_PONDERADOS}/ponderados/{weight_id}/details'
+        response = invoke(url,'GET')
+        if response and response.ok:
+            return response.json()
+        else:
+            print('response', response)
+            return []        
+    except Exception as e:
+        print(f'Exception getting valor_ponderacion {weight_id}', e)
+        raise e
+
+@app.route('/pagos/<document>/ponderado', methods=['GET', 'POST'])
+def ponderacion_pago(document):
+    try:
+        if (request.method=='GET'):
+            print(f'document: {document}')
+            doc = documento_pago(document)
+            print('working with document: ', doc)
+            supplier_id = doc[0]['CVE_PROV']
+            weights = valores_ponderacion(supplier_id)
+            print('weights found ', weights)
+            # business_units = unidades()
+            # print('business units found ', business_units)
+            return render_template('home/pagos_detalle.html', document=doc[0], weigths=weights, weight=[], defined_weight=-1) #, businessUnits=business_units)
+        if (request.method=='POST'):
+            print('defined_weights:', request.form['defined_weights'])
+            print(f'document: {document}')
+            doc = documento_pago(document)            
+            supplier_id = doc[0]['CVE_PROV']
+            print('supplier_id', supplier_id)
+            weight_id = request.form['defined_weights']
+            print(f'working with weight-supplier:', weight_id, supplier_id)
+            weight = valor_ponderacion(weight_id)
+            print('weight found ', weight)            
+            weight_applied = aplica_ponderacion(weight, doc[0])
+            print('ponderacion aplicada', weight_applied)
+            weights = valores_ponderacion(supplier_id)
+            # print('weights found ', weights)
+            return render_template('home/pagos_detalle.html', document=doc[0], weight=weight_applied, defined_weight=int(weight_id), weigths=weights)
+    except Exception as e:
+        return render_template('home/page-500.html', error=e)
 
 @app.route('/pfacturas', methods=['GET'])
 def polizas_facturas():

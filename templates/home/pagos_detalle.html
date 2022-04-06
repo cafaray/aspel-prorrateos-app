@@ -1,0 +1,360 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} UI Tables {% endblock %} 
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}
+{% endblock stylesheets %}
+<!-- Specific Page JS goes HERE  -->
+
+{% block content %}
+
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- [ breadcrumb ] start -->
+        <div class="page-header">
+            <div class="page-block">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <div class="page-header-title">
+                            <h5 class="m-b-10">Ponderaci&oacute;n pago</h5>
+                        </div>
+                        <ul class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>                            
+                            <li class="breadcrumb-item"><a href="/pagos">Pagos</a></li>
+                            <li class="breadcrumb-item"><a href="#">Ponderaci&oacute;n pago</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ breadcrumb ] end -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- [ Main Content ] start -->
+                <div class="row">
+                    <!-- [ basic-table ] start -->
+                    <div class="col-xl-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="d-block ">Ponderaci&oacute;n de pago</h5>
+                                <span class="m-t-5">Generaci&oacute;n de p&oacute;liza para el pago a proveedor</span>
+                            </div>
+                        </div>
+                        
+                        <div class="card-block table-border-style">
+                            <div class="table-responsive">                                
+                                <form method="POST" action="#" id="assign_weight">
+                                    <table class="table table-hover" >
+                                        <thead>
+                                            <tr>
+                                                <th>F. Aplicaci&oacute;n</th>
+                                                <th>Referencia</th>
+                                                <th>Documento</th>
+                                                <th>Importe</th>
+                                                <th>Aplicar ponderaci&oacute;n</th>
+                                                <th>&nbsp;</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>
+                                                    <mark>{{ document['FECHA_APLI'] }}</mark>
+                                                </td>
+                                                <td>
+                                                    <mark>{{ document['REFER'] }}</mark>
+                                                </td>
+                                                <td>
+                                                    <mark>{{ document['DOCTO'] }}</mark>
+                                                </td>
+                                                <td>
+                                                    <mark>{{ "{:,.2f}".format(document['IMPORTE']) }}</mark>
+                                                </td>
+                                                <td>                                                    
+                                                    <select id="defined_weights" name="defined_weights">
+                                                        <option value="-1">SELECCIONA</option>
+                                                        {% for option in weigths %}
+                                                        <!-- {{ defined_weight  - option['id'] }}-->
+                                                        {% if defined_weight - option['id'] == 0 %}
+                                                        <option value="{{ option['id'] }}" selected>{{ option['name'] }}</option>
+                                                        {% else %}
+                                                        <option value="{{ option['id'] }}" >{{ option['name'] }}</option>
+                                                        {% endif %}
+                                                        {% endfor %}
+                                                    </select>                                                    
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-info" id="assign">Asignar</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </form>
+                                <br />
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 40%;">Unidad</th>
+                                            <th style="width: 30%;">Porcentaje</th>
+                                            <th style="width: 30%;">Importe</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                                {% for m_account in weight['details'] %}
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="d-block ">Cuenta contable: {{ m_account['account'] }}</h5>                                        
+                                    </div>
+                                    <table>
+                                        <tbody>                                            
+                                            {% for w in m_account['weights'] %}
+                                            <tr>
+                                                <td style="width: 40%;">{{ w['businessUnit'] }}</td>
+                                                <td style="text-align: center; width: 30%;">
+                                                    <input type="text" class="txtpercent" style="border: 0px;" id="P{{w['id']}}" original="{{w['percentage']}}"
+                                                    value="{{ "{:,.4f}".format(w['percentage']) }}"
+                                                    />
+                                                </td>  
+                                                <td style="text-align: center; width: 30%;">
+                                                    <input type="text" class="txtvalue" style="border: 0px;" id="V{{w['id']}}" original="{{w['value']}}"
+                                                    value="{{ "{:,.2f}".format( w['value'] ) }}"
+                                                    />
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>                                                                            
+                                </div>
+                                {% endfor %}
+                                
+                                <div id="fileuploader" style="float: left;" >
+                                    {% if weight['total'] %}
+                                    <form action = "/api/uploader/expense" method = "POST" enctype = "multipart/form-data">
+                                        <span class="text-info d-block m-t-5">Anexar comprobante CFDI:</span>
+                                        <input type = "file" name = "cfdi" id="cfdi" style="margin: 25px;" accept="text/xml" />
+                                        <button id="attach" type="button" class="btn btn-outline-info" value="upload">Anexar</button>
+                                    </form>
+                                    
+                                    {% endif %}
+                                </div>
+                                <div style="float: right;">
+                                    {% if weight['total'] %}
+                                    <mark><span style="font-size: 1.5em;">Total Ponderaci&oacute;n:</span><label class="text-success" style="margin-right: 30px; margin-left: 10px;font-weight: bolder;font-size: 1.5em;" id="total">{{ "{:,.2f}".format( weight['total'] ) }}</label></mark>
+                                    {% endif %}
+                                    <button id="restore" type="button" class="btn btn-secondary">Restaurar</button>
+                                    <button id="process" type="button" class="btn btn-primary">Procesar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <!-- [ basic-table ] end -->
+                </div>
+                <!-- [ Main Content ] end -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+    $( document ).ready(function() {        
+        const weightSelected = $('#defined_weights'),
+            lblImporte = $('#importe'),
+            lblTotal = $('#total'),
+            btnAssign = $('#assign')
+            btnProcesa = $('#process'),
+            btnRestore = $('#restore'),
+            lblAccount = $('#account'),
+            importeDocumento = parseFloat("{{ document['IMPORTE'] }}").toFixed(2),            
+            valido = true;
+        let cfdi;
+        let documentPayment = {
+            "supplierId":"{{ document['CVE_PROV'] }}",
+            "supplier":"{{ document['NOMBRE'] }}",
+            "appliedDate":"{{ document['FECHA_APLI'] }}",
+            "description":"{{ document['DESCR'] }}",
+            "reference":"{{ document['REFER'] }}",
+            "document":"{{ document['DOCTO'] }}",
+            "amount":{{ document['IMPORTE'] }},
+            "tax1":{{ document['IMPUESTO1'] }},
+            "tax2":{{ document['IMPUESTO2'] }},
+            "tax3":{{ document['IMPUESTO3'] }},
+            "taxes":{{ document['IMPUESTOS'] }},
+            "tax4":{{ document['IMPUESTO4'] }},
+            "exchangeRate":{{ document['TCAMBIO'] }},
+            "chargeId":"{{ document['NUM_CARGO'] }}",
+            "conceptId":"{{ document['NUM_CPTO'] }}"
+        }
+        
+        $("#attach").click(function(){
+
+            var fd = new FormData();
+            var files = $('#cfdi')[0].files;
+
+            // Check file selected or not
+            if(files.length > 0 ){
+                fd.append('file',files[0]);
+                $.ajax({
+                    url: '/api/gastos/cfdi',
+                    type: 'post',
+                    data: fd,
+                    contentType: false,
+                    processData: false,
+                    success: function(response){
+                        console.log('response', response)
+                        if(response != 0){
+                            if (response.status==='ok'){
+                                console.log(response.cfdi)
+                                cfdi = response.cfdi
+                                uuid = cfdi.UUID
+                                alert('Documento ' + uuid + ' leido correctamente')
+                            } else {
+                                alert('Algo ha ocurrido y no se anexo el documento: '+ response.message);
+                            }                            
+//                          $("#img").attr("src",response); 
+//                          $(".preview img").show(); // Display image element
+                        }else{
+                            alert('Algo ha ocurrido y no se anexo el documento.');
+                        }
+                        $("#overlay").fadeOut(300);
+                    },
+                });
+            } else {
+                alert("Primero debes seleccionar un archivo CFDI");
+            }
+            $("#overlay").fadeOut(300);
+        });
+        $(".txtvalue").on('blur', (e) => {
+                        // console.log('go out from txtpercent\n', e.target)
+            // console.log('original', e.target.attributes['original'].value, ' -- ',e.target.id.substr(1))
+            value_id = e.target.id.substr(1)
+            value_original = parseFloat(e.target.attributes['original'].value.replace(/,/g,''))
+            value_current = parseFloat(e.target.value.replace(/,/g,''))
+            console.log(value_id, value_original, value_current)
+
+            if (value_current!=value_original){
+                percentage2change = $('#P'+value_id)
+                percentage_current = percentage2change.val()
+                percentage_new = value_current/importeDocumento
+                console.log('Current value:', percentage_current, 'new value:', percentage_new)
+                percentage2change.val(percentage_new.toFixed(4))
+                e.target.value = new Intl.NumberFormat().format(value_current.toFixed(2))
+                e.target.attributes['original'].value = value_current
+                valida()
+            }
+        })
+        $(".txtpercent").on('blur', (e) => {
+            // console.log('go out from txtpercent\n', e.target)
+            // console.log('original', e.target.attributes['original'].value, ' -- ',e.target.id.substr(1))
+            percentage_id = e.target.id.substr(1)
+            percentage_original = parseFloat(e.target.attributes['original'].value)
+            percentage_current = parseFloat(e.target.value)
+            console.log(percentage_id, percentage_original, percentage_current)
+
+            if (percentage_current!=percentage_original){
+                value2change = $('#V'+percentage_id)
+                value_current = parseFloat(value2change.val().replace(/,/g,''))
+                value_new = percentage_current*importeDocumento
+                console.log('Current value:', value_current, 'new value:', value_new)
+                value2change.val(new Intl.NumberFormat().format(value_new.toFixed(2)))
+                e.target.value = percentage_current.toFixed(4)
+                e.target.attributes['original'].value = percentage_current
+                valida()
+            }
+        })
+        const valida = async () => {
+            let percent = 0, suma = 0
+            $(".txtpercent").each(function (index) {
+                //console.log('value:', parseFloat($(this).val()))
+                percent += parseFloat($(this).val())
+            })
+            $(".txtvalue").each(function (index) {
+                //console.log('value:', parseFloat($(this).val()))
+                w_value = parseFloat($(this).val().replace(/,/g,''))
+                suma += w_value
+                //console.log('... suma ', w_value, ' = ' ,suma)
+            })
+            suma = suma.toFixed(2)
+            percent = percent.toFixed(4)
+            console.log('total:', percent, suma)                            
+            valido = (suma===importeDocumento)
+            console.log(suma , '===', importeDocumento, '->', valido)
+            document.getElementById('total').innerHTML = new Intl.NumberFormat().format(suma)
+            if (!valido){
+                document.getElementById('total').className="text-danger"
+                document.getElementById('total').innerHTML=document.getElementById('total').innerHTML + " ( " + percent*100 + " % ) "
+            } else {
+                document.getElementById('total').className="text-success"
+            }
+        }
+
+        btnRestore.on('click', (e) => {
+            document.getElementById('assign_weight').submit()
+        })
+        btnProcesa.on('click', (e) => {            
+            if(!valido){
+                alert("No es posible procesar hasta que los valores ponderados y el importe del documento coincidan.")
+            } else {                                                    
+                payload = {}
+                // get the detailed information
+                weights = []
+                $(".txtpercent").each(function (index) {
+                    //console.log('i am:', $(this)[0].id)
+                    percentage_id = $(this)[0].id.substr(1)
+                    percent = parseFloat($(this).val())
+                    value = parseFloat($('#V'+percentage_id).val().replace(/,/g,''))
+                    weights.push({'id': percentage_id, 'weight': percent, 'value': value})
+                })
+                console.log('weights:', weights)
+                if (cfdi){
+                    console.log('cfdi:', cfdi)
+                    payload = {'document':documentPayment, 'weights': weights, 'cfdi':cfdi}
+                } else {
+                    payload = {'document':documentPayment, 'weights': weights}
+                }
+                console.log('payload-objects:', payload)
+                payload = JSON.stringify(payload)
+                console.log('payload-stringify:', payload)                
+                $.ajax({
+                    url: '/api/gastos/polizas',
+                    type: 'post',
+                    data: payload,
+                    contentType: 'application/json',
+                    success: function(response){
+                        console.log('response', response)
+                        if(response != 0){
+                            if (response.status==='ok'){
+                                console.log(response)                                
+                                alert('Documento creado correctamente')
+                            } else {
+                                alert('Algo ha ocurrido y no se creo el documento: '+ response.message);
+                            }                            
+//                          $("#img").attr("src",response); 
+//                          $(".preview img").show(); // Display image element
+                        }else{
+                            alert('Algo ha ocurrido y no se anexo el documento.');
+                        }                        
+                    },
+                    error: function(response) {
+                        console.log('error', response)
+                        alert('Ha ocurrido algo en el servicio: ' + response.status + ': ' + response.statusText)
+                    }
+                });
+                $("#overlay").fadeOut(300);
+            }
+        })
+        btnAssign.on('click', (e) => {            
+            if (weightSelected.val()>-1){
+                form = $('#assign_weight')
+                form.submit()
+            } else {
+                alert('Debe seleccionar una opción de ponderación.')
+            }
+        })
+    });
+
+</script>
+
+{% endblock javascripts %}
