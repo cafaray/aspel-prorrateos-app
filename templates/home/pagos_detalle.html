@@ -1,6 +1,6 @@
-{% extends "layouts/base.html" %}
+{% extends "layouts/base-no-menu.html" %}
 
-{% block title %} UI Tables {% endblock %} 
+{% block title %} Ponderaci&oacute;n de pagos {% endblock %} 
 
 <!-- Specific CSS goes HERE -->
 {% block stylesheets %}
@@ -19,11 +19,13 @@
                         <div class="page-header-title">
                             <h5 class="m-b-10">Ponderaci&oacute;n pago</h5>
                         </div>
+                        <!--
                         <ul class="breadcrumb">
                             <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>                            
                             <li class="breadcrumb-item"><a href="/pagos">Pagos</a></li>
                             <li class="breadcrumb-item"><a href="#">Ponderaci&oacute;n pago</a></li>
                         </ul>
+                        -->
                     </div>
                 </div>
             </div>
@@ -49,6 +51,7 @@
                                         <thead>
                                             <tr>
                                                 <th>F. Aplicaci&oacute;n</th>
+                                                <th>Proveedor</th>
                                                 <th>Referencia</th>
                                                 <th>Documento</th>
                                                 <th>Importe</th>
@@ -60,6 +63,9 @@
                                             <tr>
                                                 <td>
                                                     <mark>{{ document['FECHA_APLI'] }}</mark>
+                                                </td>
+                                                <td>
+                                                    <mark>{{ document['NOMBRE'] }}</mark>
                                                 </td>
                                                 <td>
                                                     <mark>{{ document['REFER'] }}</mark>
@@ -330,19 +336,20 @@
                                 alert('Documento creado correctamente')
                             } else {
                                 alert('Algo ha ocurrido y no se creo el documento: '+ response.message);
-                            }                            
-//                          $("#img").attr("src",response); 
-//                          $(".preview img").show(); // Display image element
+                            }
+                            setTimeout('window.close()', 10000)
+
                         }else{
                             alert('Algo ha ocurrido y no se anexo el documento.');
-                        }                        
+                        }
+                        $("#overlay").fadeOut(300);
                     },
                     error: function(response) {
                         console.log('error', response)
                         alert('Ha ocurrido algo en el servicio: ' + response.status + ': ' + response.statusText)
+                        $("#overlay").fadeOut(300);
                     }
-                });
-                $("#overlay").fadeOut(300);
+                });                
             }
         })
         btnAssign.on('click', (e) => {            

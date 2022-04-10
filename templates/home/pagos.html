@@ -43,19 +43,23 @@
                                             <tr>
                                                 <td colspan="10px"><label for="datefrom">Desde</label></td>
                                                 <td colspan="10px">
-                                                    <input type="date" name="datefrom" id="datefrom">
+                                                    <input type="date" name="datefrom" id="datefrom" value="{{applied_date}}">
                                                 </td>
                                                 <td colspan="10px"><label for="provider">Proveedor</label></td>
                                                 <td colspan="10px">
                                                     <select id="supplier" name="supplier">
                                                         <option value="-1">SELECCIONA</option>                                                        
                                                     {% for option in suppliers %}
+                                                        {% if supplier == option['CLAVE'] %}
+                                                        <option value="{{ option['CLAVE'] }}" selected>{{ option['NOMBRE'] }}</option>
+                                                        {% else %}
                                                         <option value="{{ option['CLAVE'] }}">{{ option['NOMBRE'] }}</option>
+                                                        {% endif %}
                                                     {% endfor %}
                                                     </select>
                                                 </td>
                                                 <td style="text-align: right;">
-                                                    <button type="button" class="btn btn-primary" onclick="search()">Cargar</button>
+                                                    <button type="button" class="btn btn-primary" id="search">Cargar</button>
                                                 </td> 
                                             </tr>
                                         </table>
@@ -106,7 +110,8 @@
                                         <tr>
                                             <td colspan="11">
                                                 <div style="float: right;">
-                                                    <button type="button" class="btn btn-secondary" onclick="clean()">Limpiar</button>                                                    
+                                                    <button type="button" class="btn btn-outline-info" id="refresh">Actualizar</button>
+                                                    <button type="button" class="btn btn-outline-secondary" id="clean">Limpiar</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -129,18 +134,22 @@
 
 {% block javascripts %}
 <script>
-    function search(){
-        dateFrom = document.getElementById('datefrom').value
-        supplier = document.getElementById('supplier').value
-        //alert('Querying data from '+ dateFrom )
-        location.replace('/pagos?datefrom='+dateFrom+'&supplier='+supplier)
-    }
-    function detail(docto) {
-        location.replace('/pagos/'+docto+'/ponderado')
-    }
-    function clean(){
-        location.replace('/pfacturasdiario')
-    }
+    $( document ).ready(function() {
+        var dateFrom = $("#datefrom"),
+            supplier = $("#supplier");
 
+        $("#refresh").on('click', () => {
+            location.reload()
+        })
+        $("#search").on('click', () => {
+            location.replace('/pagos?datefrom='+dateFrom.val()+'&supplier='+supplier.val())    
+        })
+        $("#clean").on('click', () => {
+            location.replace('/pagos')
+        })
+    })
+    function detail(docto) {
+        window.open('/pagos/'+docto+'/ponderado', '_blank')
+    }
 </script>
 {% endblock javascripts %}

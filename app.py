@@ -818,26 +818,30 @@ def validate_user(email: str, password: str):
         return False
 
 def invoke(url, method, payload=None, content_type='application/json'):
-    try:             
+    try:
         token = session.get('token', '')
         user_id = session.get('userId', '')
-        headers = {'x-auth':token, 'userId': user_id, 'Content-Type': content_type}
-        if payload:
-            print('invoking at', method, url, headers, payload)
-            req = requests.Request(method, url, headers=headers, data=payload)
-        else:    
-            print('invoking at', method, url, headers)
-            req = requests.Request(method, url, headers=headers)
-        prepped = req.prepare()
-        print('req', prepped)
-        print('payload', payload)
-        s = requests.Session()
-        response = s.send(prepped, timeout=200)
-        print('response.status', response.status_code)
-        print('response.ok', response.ok)
-        return response
+        if token == '': 
+            print('*****     Session expired     *****  ')            
+            raise Exception('Session expired, start a new session.')
+        else:
+            headers = {'x-auth':token, 'userId': user_id, 'Content-Type': content_type}
+            if payload:
+                print('invoking at', method, url, headers, payload)
+                req = requests.Request(method, url, headers=headers, data=payload)
+            else:
+                print('invoking at', method, url, headers)
+                req = requests.Request(method, url, headers=headers)
+            prepped = req.prepare()
+            print('req', prepped)
+            print('payload', payload)
+            s = requests.Session()
+            response = s.send(prepped, timeout=200)
+            print('response.status', response.status_code)
+            print('response.ok', response.ok)
+            return response
     except Exception as e:
-        print(' ** Exception invoking:\n===>', method, url, '\n===>payload:',payload, '\n==========\nError:', e, '\n==========')
+        print(' ** Exception invoking:\n===>', method, url, '\n===> payload:',payload, '\n==========\nError:', e, '\n==========')
         raise e
 
 def porcentajes(args):
@@ -1223,16 +1227,16 @@ def polizas_compras():
 @app.route('/pagos', methods=['GET'])
 def ponderacion_pagos():
     try:
-        date_from= request.args.get('datefrom')
-        supplier = request.args.get('supplier')
-        if date_from:
-            data = documentos_pago_sae(date_from, supplier)
-        else:
-            data = []
+        date_from= request.args.get('datefrom') or datetime.now().strftime('%Y-%m-%d')
+        supplier = request.args.get('supplier') or -1
+        #if not date_from:            
+        #    date_from = datetime.now()
+        print('date_from, supplier', date_from, supplier)
+        data = documentos_pago_sae(date_from, supplier)
         suppliers = proveedores()
-        return render_template('home/pagos.html', data=data, suppliers=suppliers)
+        return render_template('home/pagos.html', data=data, suppliers=suppliers, applied_date=date_from, supplier=supplier)
     except Exception as e:
-        return render_template('home/page-500', error = e)
+        return render_template('home/page-500.html', error = e)
 
 def documento_pago(document_id):
     try:
@@ -1272,6 +1276,39 @@ def valor_ponderacion(weight_id):
     except Exception as e:
         print(f'Exception getting valor_ponderacion {weight_id}', e)
         raise e
+
+@app.route('/sincronizar/proveedores', methods=['GET', 'POST'])
+def sincronizar_proveedores():
+    try:
+        if(request.method=='GET'):
+            url = f'{BASE_URL_PONDERADOS}/sync/suppliers'
+            result = invoke(url, 'GET')
+            if(result and result.ok):
+                result = result.json()
+                print('result')
+                return render_template('home/sync_proveedores.html', data=result)
+            else:
+                print('result:', result)
+                return render_template('home/sync_proveedores.html', data=[])
+        if(request.method=='POST'):
+            payload = request.get_json()
+            print('payload', payload)
+            url = f'{BASE_URL_PONDERADOS}/sync/suppliers'
+            if payload:
+                result = invoke(url, 'POST', json.dumps(payload))
+            else:
+                result = invoke(url, 'POST')
+            if(result and result.ok):
+                result = result.json()
+                print('=== result ok', result)                
+            else:
+                print('*** result ko', result)
+                result = {'status':'ko', 'message': result}
+            return result
+
+    except Exception as e:
+        print(f'Error at {request.method} sincronizar_proveedores:', e)
+        return render_template('home/page-500.html', error=e)
 
 @app.route('/pagos/<document>/ponderado', methods=['GET', 'POST'])
 def ponderacion_pago(document):

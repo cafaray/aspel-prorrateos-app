@@ -3,7 +3,7 @@
 
 <head>
     <title>
-        Biotecsa. Sistema de prorrateos
+        
     </title>
     <!-- HTML5 Shim and Respond.js IE10 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -15,11 +15,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
     <link rel="canonical" href="https://appseed.us/admin-dashboards/flask-dashboard-dattaable">
     
-    <meta name="description" content="Datta Able Bootstrap admin template made using Bootstrap 4 and it has huge amount of ready made feature, UI components, pages which completely fulfills any dashboard needs." />
-    <meta name="keywords" content="admin templates, bootstrap admin templates, bootstrap 4, dashboard, dashboard templets, sass admin templets, html admin templates, responsive, bootstrap admin templates free download,premium bootstrap admin templates, datta able, datta able bootstrap admin template, free admin theme, free dashboard template"/>
-    <meta name="author" content="CodedThemes"/>
+    <!--  For datatables
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/dataTables.bootstrap5.css">  
+    -->
+    
+    <meta name="description" content="System to prepare ..." />
+    <meta name="keywords" content="biotecsa ftc prorrateos aspe sae coi ftconline"/>
+    <meta name="author" content="Alberto Farias"/>
 
     <!-- Favicon icon -->
     <link rel="icon" href="/static/assets/images/favicon.ico" type="image/x-icon">
@@ -29,21 +34,45 @@
     <link rel="stylesheet" href="/static/assets/plugins/animation/css/animate.min.css">
     <!-- vendor css -->
     <link rel="stylesheet" href="/static/assets/css/style.css">
-
+    <link rel="stylesheet" href="/static/styles/base-spinner.css">
+    
+    
     <!-- Specific CSS goes HERE -->
     {% block stylesheets %}{% endblock stylesheets %}
 
 </head>
 
 <body>
+    <div id="overlay">
+        <div class="cv-spinner">
+          <span class="spinner"></span>
+        </div>
+      </div>
+    <!-- [ Pre-loader ] start -->
+    <div class="loader-bg">
+        <div class="loader-track">
+            <div class="loader-fill"></div>
+        </div>
+    </div>    
     
-    {% block content %}{% endblock content %}
+    <!-- Top Bar -->
+    {% include 'includes/navigation.html' %}
+
+    
+    
+
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+
+            {% block content %}{% endblock content %}
+
+        </div>
+    </div>
 
     {% include 'includes/scripts.html' %}
 
     <!-- Specific Page JS goes HERE  -->
-    {% block javascripts %}{% endblock javascripts %}    
-
+    {% block javascripts %}{% endblock javascripts %}
+    
 </body>
 </html>
-
