@@ -115,15 +115,22 @@ def anexa_cfdi():
         return {'status': 'ko', 'message':e.args[0]}
 
 
-def save_status_process(id, req, res):
+def save_status_process(id, req='', res=''):    
+    if (id=='__end'):
+        insert_status_process(status_process, req)
     status_process.append({'id': id, 'request': req, 'response': res})
 
-def insert_status_process(status_process):
+def insert_status_process(status_process, suffix):
     ts = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_status = open(os.path.join(RECORD_STATUS_FOLDER, ts + '.txt'), 'a')
+    filename = f'{ts}_{suffix}.txt'
+    print(f'inserting {len(status_process)} records of status process in {filename}')   
+    
+    file_status = open(os.path.join(RECORD_STATUS_FOLDER, filename), 'a') 
     for s in status_process:
-        file_status.write(s)
-    status_process = []
+        pref = '-----\n* '
+        for k,v in s.items():
+            file_status.write(f'{pref}{k}: {v}\n')
+            pref = '  '        
 
 @app.route('/api/gastos/polizas', methods=['POST'])
 def gastos_polizas():
@@ -178,7 +185,7 @@ def gastos_polizas():
             raise Exception('Imposible determinar un folio para: {0} {1}-{2}'.format('Dr', ejercicio, periodo))
             
         dia = datetime.now().day
-        descripcion = f'{documento["description"]} {documento["appliedDate"]} {documento["supplier"]} {documento["reference"]}'
+        descripcionPoliza = f'{documento["description"]} {documento["appliedDate"]} {documento["supplier"]} {documento["reference"]}'
         auxiliares = []
         save_status_process('defining auxiliars', detalles, 'n/a')
         for detalle in detalles:
@@ -188,7 +195,7 @@ def gastos_polizas():
             cuenta_contable = detalle['id'][0:12]
             tipo_cambio = documento['exchangeRate']
             unidad_negocio = detalle['id'][15:]
-            auxiliares.append({'cuentaContable':cuenta_contable, 'unidadNegocio':unidad_negocio, 'descripcion':descripcion, 'tipoCambio':tipo_cambio, 'cargo':cargo, 'abono':abono})
+            auxiliares.append({'cuentaContable':cuenta_contable, 'unidadNegocio':unidad_negocio, 'descripcion':descripcionPoliza, 'tipoCambio':tipo_cambio, 'cargo':cargo, 'abono':abono})
         
         # Manejo para los impuestos
         if documento['tax4']>0:
@@ -242,7 +249,7 @@ def gastos_polizas():
         auxiliares.append({'cuentaContable': CUENTA_PROVEEDORES, 'unidadNegocio':'', 'descripcion':DESCRIPCION_CUENTA_PROVEEDORES, 'tipoCambio':1, 'cargo':IMPORTE_CARGO_CERO, 'abono':cargo_total-documento['taxes']})
         save_status_process('defining auxiliars', f'tax4: {documento["tax4"]}, taxes: {documento["taxes"]}', auxiliares)
         poliza = {
-            'numeroFolio': next_folio, 'descripcion':descripcion, 'tipo':TIPO_POLIZA, 'numeroDia': dia, 'fecha': fecha_aplicacion,
+            'numeroFolio': next_folio, 'descripcion':descripcionPoliza, 'tipo':TIPO_POLIZA, 'numeroDia': dia, 'fecha': fecha_aplicacion,
             'periodo': periodo, 'ejercicio': ejercicio, 'cfdi': es_cfdi, 'uuid': uuid,
             'auxiliares': auxiliares
         }
@@ -258,14 +265,15 @@ def gastos_polizas():
             save_status_process('actualiza_contabilizado:', f'reference: {documento["reference"]}, supplierId: {documento["supplierId"]}, chargeId: {documento["chargeId"]}, conceptId: {documento["conceptId"]}', response)
             save_status_process('actualiza_folio:', f'tipo poliza: {TIPO_POLIZA}, ejercicio: {ejercicio}, periodo: {periodo}, folio: {next_folio}', 'n/a')
             response = actualiza_folio(TIPO_POLIZA, ejercicio, periodo, next_folio)
-            save_status_process('actualiza_folio:', f'tipo poliza: {TIPO_POLIZA}, ejercicio: {ejercicio}, periodo: {periodo}, folio: {next_folio}', response)
-            insert_status_process(status_process)
+            save_status_process('actualiza_folio:', f'tipo poliza: {TIPO_POLIZA}, ejercicio: {ejercicio}, periodo: {periodo}, folio: {next_folio}', response)            
+            save_status_process('__end', next_folio)
+            
             return {'status': 'ok', 'data':payload}
         else:
             return {'status': 'ko', 'message':f'Algo ha ido mal y no se ha insertado la poliza correctamente. {response}'}
     except Exception as e:
         print(f'Exception in {request.method} gastos_polizas:', e)
-        insert_status_process(status_process)
+        save_status_process('__end', next_folio)
         return {'status': 'ko', 'message':e.args[0]}
 
 def inserta_poliza_coi(poliza):
