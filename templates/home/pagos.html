@@ -137,7 +137,6 @@
     $( document ).ready(function() {
         var dateFrom = $("#datefrom"),
             supplier = $("#supplier");
-
         $("#refresh").on('click', () => {
             location.reload()
         })
@@ -148,6 +147,11 @@
             location.replace('/pagos')
         })
     })
+    
+    $( window ).blur(function () {
+        location.reload()
+    })
+
     function detail(docto) {
         window.open('/pagos/'+docto+'/ponderado', '_blank')
     }

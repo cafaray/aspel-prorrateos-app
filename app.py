@@ -7,9 +7,12 @@ from unittest import result
 from urllib import response
 from urllib.parse import urlparse
 from urllib.request import Request
-import logging.config
+
 from flask import Flask, redirect, url_for, render_template, request, session, flash, jsonify
 import requests
+
+import logging
+import logging.config
 
 from requests.models import Response
 import json
@@ -22,10 +25,6 @@ from decouple import config
 import xml.etree.ElementTree as ET
 
 app = Flask(__name__) # , template_folder='templates', static_folder='static')
-# logging_conf_path = os.path.normpath(os.path.join(os.path.dirname(__file__), 'logging.conf'))
-# print('===> logging conf path: ', logging_conf_path)
-# logging.config.fileConfig(logging_conf_path)
-# log = logging.getLogger(__name__)
 
 app.secret_key = "c29ydGUuYmlvdGVjc2EuY29tL2FkbWluCg=="
 app.permanent_session_lifetime= timedelta(hours=2)
@@ -35,9 +34,23 @@ BASE_URL_COI = config('BASE_URL_COI')
 BASE_URL_SAE = config('BASE_URL_SAE')
 BASE_URL_PONDERADOS = config('BASE_URL_PONDERADOS')
 UPLOAD_FOLDER = config('UPLOAD_FOLDER' )
+LOGGING_FOLDER = config('LOGGING_FOLDER' )
 RECORD_STATUS_FOLDER = config('RECORD_STATUS_FOLDER')
 
-status_process = []
+date_log = datetime.strftime(datetime.now(), '%Y%m%d')
+logging_filename = f'{date_log}_app_prorrateos.log'
+logging_filename = os.path.join(LOGGING_FOLDER, logging_filename)
+print(' * Log file at:', logging_filename)
+logging.basicConfig(filename=logging_filename, 
+                    encoding='utf-8', 
+                    level=logging.DEBUG, 
+                    format="%(asctime)s %(levelname)s %(threadName)s %(name)s %(message)s")
+
+from subprocess import check_output
+coi = check_output(['PORT=5000 npm run dev', '../../hello.js'])
+print (p)
+
+
 
 print(f'''WORKING WITH NEXT PARAMS: 
     * FILE_LOCATION: {FILE_LOCATION}
@@ -46,6 +59,8 @@ print(f'''WORKING WITH NEXT PARAMS:
     * BASE_URL_PONDERADOS: {BASE_URL_PONDERADOS}
     * TEMPORARY_FILES: {UPLOAD_FOLDER}
     ''')
+
+status_process=[]
 
 @app.route('/api/gastos/cfdi', methods = ['GET', 'POST'])
 def anexa_cfdi():
@@ -1441,6 +1456,7 @@ def ponderaciones():
 # @app.route('/<path>')
 def home(path):
     print('Come to home', path)
+    
     if 'user' in session:
         try:
             return render_template('home/index.html')
