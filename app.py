@@ -1,4 +1,4 @@
-from crypt import methods
+#from crypt import methods
 from distutils.log import error
 from email.policy import default
 import functools
@@ -45,12 +45,6 @@ logging.basicConfig(filename=logging_filename,
                     encoding='utf-8', 
                     level=logging.DEBUG, 
                     format="%(asctime)s %(levelname)s %(threadName)s %(name)s %(message)s")
-
-from subprocess import check_output
-coi = check_output(['PORT=5000 npm run dev', '../../hello.js'])
-print (p)
-
-
 
 print(f'''WORKING WITH NEXT PARAMS: 
     * FILE_LOCATION: {FILE_LOCATION}
