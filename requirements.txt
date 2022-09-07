@@ -1,6 +1,6 @@
-Werkzeug==0.16.0
-Flask
+
+flask==2.0.2
 requests
-gunicorn==20.0.4
+gunicorn==20.1.0
 openpyxl
 python-decouple

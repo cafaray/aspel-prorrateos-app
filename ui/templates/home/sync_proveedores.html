@@ -1,0 +1,155 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Sincronizar proveedores {% endblock %} 
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- [ breadcrumb ] start -->
+        <div class="page-header">
+            <div class="page-block">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <div class="page-header-title">
+                            <h5 class="m-b-10">Utilidades. Sincronizar</h5>
+                        </div>
+                        <ul class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="index.html"><i class="feather icon-home"></i></a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ breadcrumb ] end -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- [ Main Content ] start -->
+                <div class="row">
+                    <!-- [ badge ] start -->
+                    <div class="col-sm-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Sincronizar proveedores</h5>
+                            </div>
+                            <div class="card-block table-border-style">
+                                Buscar Proveedores
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Clave</th>
+                                                <th>Nombre</th>
+                                                <th>RFC</th>
+                                                <th>CURP</th>
+                                                <th>Estatus</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in data %}
+                                            <tr>
+                                                <td>{{ item['CLAVE'] }}</td>                                            
+                                                <td>{{ item['NOMBRE'] }}</td>
+                                                <td>{{ item['RFC'] }}</td>
+                                                <td>{{ item['CURP'] }}</td>                         
+                                                <td>
+                                                    {{ item['STATUS'] }}
+                                                    {% if loop.last %}
+                                                        <input type="hidden" id="from" value="{{ item['CLAVE'] }}" />
+                                                    {% endif %}    
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="5">
+                                                    <div style="float: right;">
+                                                        <button type="button" class="btn btn-primary" id="addMissing">Agregar faltantes</button>
+                                                        <button type="button" class="btn btn-secondary" id="reload">Volver a cargar</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tfoot>                                     
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- [ badge ] end -->
+                </div>
+                <!-- [ Main Content ] end -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+<!-- Specific Page JS goes HERE  -->
+{% block javascripts %}
+<script>
+    $( document ).ready(function (){
+        var lastId = $("#from").val()
+        $('#addMissing').on('click', (e) => {
+            payload = {'from': lastId}            
+            console.log('payload', payload)
+            payload = JSON.stringify(payload)
+            $.ajax({
+                url: '/sincronizar/proveedores',
+                type: 'post',
+                data: payload,
+                contentType: 'application/json',
+                success: function(response){
+                    console.log('response', response)
+                    if(response != 0){
+                        if (response.status==='ok'){
+                            console.log(response)                                
+                            alert('Sincronización correcta: ' + response.affectedRows + ' agregados.')
+                        } else {
+                            alert('Algo ha ocurrido y no se ha logrado sincronizar: '+ response.message);
+                        }                        
+                    }else{
+                        alert('Algo ha ocurrido y no se ha logrado sincronizar.');
+                    }
+                    $("#overlay").fadeOut(300);
+                },
+                error: function(response) {
+                    console.log('error', response)
+                    alert('Ha ocurrido algo en el servicio: ' + response.status + ': ' + response.statusText)
+                    $("#overlay").fadeOut(300);
+                }
+            });                            
+        })
+        $('#reload').on('click', (e) => {
+            $.ajax({
+                url: '/sincronizar/proveedores',
+                type: 'post',
+                contentType: 'application/json',
+                success: function(response){
+                    console.log('response', response)
+                    if(response != 0){
+                        if (response.status==='ok'){
+                            console.log(response)                                
+                            alert('Sincronización correcta: ' + response.affectedRows + ' agregados.')
+                        } else {
+                            alert('Algo ha ocurrido y no se ha logrado sincronizar: '+ response.message);
+                        }                        
+                    }else{
+                        alert('Algo ha ocurrido y no se ha logrado sincronizar.');
+                    }
+                    $("#overlay").fadeOut(300);
+                },
+                error: function(response) {
+                    console.log('error', response)
+                    alert('Ha ocurrido algo en el servicio: ' + response.status + ': ' + response.statusText)
+                    $("#overlay").fadeOut(300);
+                }
+            });
+        })
+    })
+</script>
+{% endblock javascripts %}

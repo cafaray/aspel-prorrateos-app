@@ -7,8 +7,9 @@ from unittest import result
 from urllib import response
 from urllib.parse import urlparse
 from urllib.request import Request
+from xml.dom import NotFoundErr
 
-from flask import Flask, redirect, url_for, render_template, request, session, flash, jsonify
+from flask import Flask, redirect, url_for, render_template, request, session, flash, jsonify, send_from_directory, send_file
 import requests
 
 import logging
@@ -612,6 +613,21 @@ def genera_poliza_diario(documents, date_from, number_invoice):
         print('Error while genera_poliza', e)
         return None
 
+@app.route('/api/facturasdiario/download', methods=['GET'])
+def descarga_diario_ventas():
+    try:
+        if (request.args['filename']): 
+            filename = request.args['filename']
+            the_file = os.path.join(FILE_LOCATION, filename)
+            print('Sending the file', the_file)
+            return send_file(the_file)
+        else:
+            print('Not file was requested')
+            return
+    except NotFoundErr as e:
+        print('File not found.', the_file)
+        return e
+
 @app.route('/api/facturasdiario', methods=['POST'])
 def procesa_diario_ventas():
     try:        
@@ -642,8 +658,8 @@ def procesa_diario_ventas():
                         response = invoke(url, 'PUT', payload=payload) #, content_type="'Content-Type': 'application/json'")
                         print('response invoke update folio', response)
                         if (response and response.status_code and response.ok):                            
-                            result = response.json()
-                            return {'status': 'ok', 'details': f'Se ha generado el archivo {filename}'}
+                            # result = response.json()
+                            return {'status': 'ok', 'details': f'{filename}'}
                         else:
                             return {'status': 'ko', 'details': response.status_code}
                     else:
@@ -698,9 +714,9 @@ def genera_poliza_venta(documents, date_from, date_to, number_invoice):
                 j = j + 1
         # ->        
         ws['B'+str(j)] = 'FIN_PARTIDAS'        
-        filename = f'{FILE_LOCATION}polizas_venta_{number_invoice}.xlsx'
+        filename = f'{FILE_LOCATION}polizas_venta_{number_invoice}.xlsx'        
         wb.save(filename = filename)
-        return filename
+        return 'polizas_venta_{number_invoice}.xlsx'
     except Exception as e:
         print('Error while generar_archivo:', e)
         raise e
@@ -1370,7 +1386,7 @@ def polizas_facturas():
                 sum_haber = 0
                 for item in document['items']:
                     sum_haber = sum_haber + item['IMPORTE']
-                #print('sum of partida.importe0', sum_haber)
+                print('sum of partida.importe', sum_haber)
                 document['IMPORTE'] = round(sum_haber, 2)
             df = datetime.strptime(date_from, '%Y-%m-%d')
             ejercicio = df.year

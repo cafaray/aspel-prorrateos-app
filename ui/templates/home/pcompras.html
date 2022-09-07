@@ -1,0 +1,198 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} UI Tables {% endblock %} 
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+<!-- Specific Page JS goes HERE  -->
+
+{% block content %}
+
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- [ breadcrumb ] start -->
+        <div class="page-header">
+            <div class="page-block">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <div class="page-header-title">
+                            <h5 class="m-b-10">Ponderados</h5>
+                        </div>
+                        <ul class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>                            
+                            <li class="breadcrumb-item"><a href="#">P&oacute;liza compras</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ breadcrumb ] end -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- [ Main Content ] start -->
+                <div class="row">
+                    <!-- [ basic-table ] start -->
+                    <div class="col-xl-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="d-block ">P&oacute;lizas de compras </h5>
+                                <span class="m-t-5">Revisi&oacute;n de las p&oacute;lizas de compra para su procesamiento</span>
+                                <div style="display: block;">
+                                    <form method="GET">
+                                        <table class="table table-hover">
+                                            <tr>
+                                                <td><label for="doctypecoi">Tipo p&oacute;liza COI</label></td>
+                                                <td><label for="lastperiod">Ultimo per&iacute;odo</label></td>
+                                                <td><label for="doctypesae">Tipo p&oacute;liza SAE</label></td>
+                                                <td><label for="datefrom">Desde</label></td>
+                                                <td><label for="datto">Hasta</label></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <select id="doctypecoi" name="doctypecoi">
+                                                        <option value="-1">SELECCIONA</option>
+                                                        {% for option in doctypescoi %}
+                                                        <option value="{{option['TIPO']}}">{{option['DESCRIP']}}</option>
+                                                        {% endfor %}
+                                                    </select>            
+                                                </td>
+                                                <td>
+                                                    <h5>{{lastperiod[0]['EJERCICIO']}} - {{lastperiod[0]['PERIODO']}}</h5>
+                                                    <!-- <input type="text" id="lastperiod" name="lastperiod" disabled="true"> -->
+                                                </td>
+                                                <td>
+                                                    <select id="doctypesae" name="doctypesae" disabled>
+                                                        <option value="-1">SELECCIONA</option>
+                                                        {% for option in doctypessae %}
+                                                        {% if option['TIPO'] in 'C' %}
+                                                        <option selected value="{{option['TIPO']}}">{{option['DESCRIP']}}</option>
+                                                        {% else %}
+                                                        <option value="{{option['TIPO']}}">{{option['DESCRIP']}}</option>
+                                                        {% endif %}
+                                                        {% endfor %}
+                                                    </select>                                                    
+                                                </td>
+                                                <td>
+                                                    <input type="date" name="datefrom" id="datefrom">
+                                                </td>
+                                                <td>
+                                                    <input type="date" name="dateto" id="dateto">
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                               <td colspan="5" style="text-align: right;">
+                                                    <button type="button" class="btn btn-primary" onclick="search()">Cargar</button>
+                                               </td> 
+                                            </tr>
+                                        </table>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-block table-border-style">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Cuenta contable</th>
+                                            <th>Departamento</th>
+                                            <th>Centro costo</th>
+                                            <th>Descripci&oacute;n</th>
+                                            <th>Fecha</th>
+                                            <th>Moneda</th>
+                                            <th>Tipo cambio</th>
+                                            <th>Debe</th>
+                                            <th>Haber</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="9" style="text-align: left;font-weight: bolder;margin: 5px;">DOCUMENTOS</td>
+                                        </tr>
+                                        {% for item in data['documents'] %}                                            
+                                        <!-- <tr name="{{ item['id'] }}" id="ponderado_{{item['id']}}" onclick="location.replace('/ponderado_detalle?weighted={{item['id']}}');"></tr> -->
+                                        <tr name="{{ item['CVE_DOC'] }}" id="ponderado_{{item['CVE_DOC']}}">
+                                            <td>
+                                                <select id="baseaccount" name="baseaccount">
+                                                    <option value="-1">SELECCIONA</option>
+                                                {% for option in baseaccounts %}
+                                                    <option value="{{ option['NUM_CTA'] }}">{{ option['NUM_CTA'] }} - {{ option['NOMBRE'] }}</option>
+                                                {% endfor %}
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select id="divisioncoi" name="divisioncoi">
+                                                    <option value="-1">SELECCIONA</option>
+                                                {% for option in divisionscoi %}
+                                                <option value="{{ option['DEPTO'] }}">{{ option['DESCRIP']}}</option>
+                                                {% endfor %}
+                                                </select>
+                                            </td>
+                                            <td>{{ item['CENTRO_COSTOS'] }}</td>
+                                            <td>{{ item['DESCRIPCION'] }}</td>
+                                            <td>{{ item['FECHA_DOC'] }}</td>
+                                            <td>{{ item['MONEDA'] }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['TIPO_CAMBIO']) }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['IMPORTE']) }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(0) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                        <tr>
+                                            <td colspan="9" style="text-align: left;font-weight: bolder;margin: 5px;">PARTIDAS</td>
+                                        </tr>
+                                        {% for item in data['items'] %}                                            
+                                        <!-- <tr name="{{ item['id'] }}" id="ponderado_{{item['id']}}" onclick="location.replace('/ponderado_detalle?weighted={{item['id']}}');"></tr> -->
+                                        <tr name="{{ item['CVE_DOC'] }}" id="ponderado_{{item['CVE_DOC']}}">
+                                            <td>
+                                                <select id="baseaccount" name="baseaccount">
+                                                    <option value="-1">SELECCIONA</option>
+                                                {% for option in baseaccounts %}
+                                                    <option value="{{ option['NUM_CTA'] }}">{{ option['NUM_CTA'] }} - {{ option['NOMBRE'] }}</option>
+                                                {% endfor %}
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select id="divisioncoi" name="divisioncoi">
+                                                    <option value="-1">SELECCIONA</option>
+                                                {% for option in divisionscoi %}
+                                                <option value="{{ option['DEPTO'] }}">{{ option['DESCRIP']}}</option>
+                                                {% endfor %}
+                                                </select>
+                                            </td>
+                                            <td>{{ item['CENTRO_COSTOS'] }}</td>
+                                            <td>{{ item['DESCRIPCION'] }}</td>
+                                            <td>{{ item['FECHA_DOC'] }}</td>
+                                            <td>{{ item['MONEDA'] }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['TIPO_CAMBIO']) }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(0) }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['IMPORTE']) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- [ basic-table ] end -->
+                </div>
+                <!-- [ Main Content ] end -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+    function search(){
+        dateFrom = document.getElementById('datefrom').value
+        dateto = document.getElementById('dateto').value
+        alert('Querying data from '+ dateFrom + ' to ' + dateto)
+        location.replace('/pcompras?datefrom='+dateFrom+'&dateto='+dateto)
+    }
+</script>
+{% endblock javascripts %}
