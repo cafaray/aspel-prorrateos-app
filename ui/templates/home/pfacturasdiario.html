@@ -93,7 +93,7 @@
                                                 </div>
                                                 <div style="float: right;">
                                                     <button type="button" class="btn btn-secondary" onclick="clean()">Limpiar</button>
-                                                    <button type="button" class="btn btn-primary" onclick="process()">Procesar</button>                                                    
+                                                    <button type="button" class="btn btn-primary" onclick="process()">Procesar</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -132,7 +132,7 @@
             xhttp.onload = function() {
                 console.log('===>result.response:  ' + this.status + ' ' + this.readyState)
                 if(this.status=='200'){
-                    // console.log('this.responseText', this.responseText)                    
+                    // console.log('this.responseText', this.responseText)
                     result = JSON.parse(this.responseText)
                     if (result.status==='ok'){
                         alert("El archivo se ha generado correctamente.") 
@@ -143,7 +143,7 @@
                         if (result.details){
                             mensaje = result.details
                         }
-                        alert('Algo ha ocurrido y no se completo la petición. ' + mensaje)                
+                        alert('Algo ha ocurrido y no se completo la petición. ' + mensaje)
                     }
                 } else {
                     alert('Ha ocurrido un fallo al procesar la petición: ' + this.status)

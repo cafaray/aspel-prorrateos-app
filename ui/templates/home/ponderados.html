@@ -1,0 +1,177 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} UI Tables {% endblock %} 
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+<!-- Specific Page JS goes HERE  -->
+
+{% block content %}
+
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- [ breadcrumb ] start -->
+        <div class="page-header">
+            <div class="page-block">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <div class="page-header-title">
+                            <h5 class="m-b-10">Ponderados</h5>
+                        </div>
+                        <ul class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>
+                            <li class="breadcrumb-item"><a href="#!">Utilidades</a></li>
+                            <li class="breadcrumb-item"><a href="javascript:">Ponderados</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ breadcrumb ] end -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- [ Main Content ] start -->
+                <div class="row">
+                    <!-- [ basic-table ] start -->
+                    <div class="col-xl-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="d-block ">Valores ponderados</h5>
+                                <span class="m-t-5">Ponderaci&oacute;n de valores en cuentas por pagar</span>
+                                <div style="float: right;">
+                                    <form method="GET">
+                                        <label class="m-t-5">Buscar:</label> 
+                                        <input type="text" class="" name="supplier" id="supplier" placeholder="Proveedor">
+                                        <input type="text" class="" name="concept" id="concept" placeholder="Concepto">
+                                        <button type="submit" class="btn btn-secondary" title="Buscar" data-toggle="tooltip">Buscar</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <button class="btn btn-light" type="button" data-toggle="collapse" data-target="#collapseAddElement" aria-expanded="false" aria-controls="collapseAddElement">Agregar</button>
+                                <div class="collapse" id="collapseAddElement">
+                                    <div class="card-body">
+                                        <div style="float:inline-start;">
+                                            <h5 class="d-block ">Agregar valor ponderado</h5>
+                                            <form>
+                                                <div class="form-group">
+                                                    <label for="name">Nombre</label>
+                                                    <input type="text" class="form-control" id="name" name="name" aria-describedby="nameHelp" placeholder="nombre">
+                                                    <small id="nameHelp" class="form-text text-muted">Nombre con el que se identificará a los valores ponderados</small>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="concept">Concepto</label>
+                                                    <select class="form-control" name="conceptId" id="conceptId">
+                                                        <option value="-1">SELECCIONA</option>
+                                                        {% for option in concepts %}
+                                                        <option value="{{option['NUM_CPTO']}}">{{option['DESCR']}}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="supplier">Proveedor</label>                                                
+                                                    <select class="form-control" name="supplierId" id="supplierId">
+                                                        <option value="-1">SELECCIONA</option>
+                                                        {% for option in suppliers %}
+                                                        <option value="{{option['CLAVE']}}">{{option['NOMBRE']}}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <button type="button" class="btn btn-primary" onclick="add()">Agregar</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                            <div class="card-block table-border-style">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Nombre</th>
+                                                <th>Concepto</th>
+                                                <th>Proveedor</th>
+                                                <th>&nbsp;</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in data %}                                            
+                                            <!-- <tr name="{{ item['id'] }}" id="ponderado_{{item['id']}}" onclick="location.replace('/ponderado_detalle?weighted={{item['id']}}');"></tr> -->
+                                            <tr name="{{ item['id'] }}" id="ponderado_{{item['id']}}">
+                                                <td>
+                                                    <a href="/ponderado_detalle?weighted={{item['id']}}">{{ item['name'] }}</a>
+                                                </td>
+                                                <td>{{ item['concept'] }}</td>
+                                                <td>{{ item['supplier'] }}</td>
+                                                <td>
+                                                    <a href="javascript:trash({{item['id']}})" style="padding-left: 10px;"><i class="feather icon-trash"></i></a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- [ basic-table ] end -->
+                </div>
+                <!-- [ Main Content ] end -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+$( function() {     
+    var concept = $('#conceptId').val(), 
+    supplier = $('#supplierId').val(), 
+    name = $('#name').val() 
+    console.log(`concept=${concept}, supplier=${supplier}, name=${name}`)    
+})
+function trash(id) {
+    const xhttp = new XMLHttpRequest();
+    xhttp.onload = function () {
+        result = JSON.parse(this.responseText)
+        if(result.status==='ok'){
+            alert('Elemento eliminado')
+            window.location.reload();
+        } else {
+            alert('Algo fue mal: ' + result.status)
+        }
+    }
+    xhttp.open("DELETE", "/api/ponderados", true);
+    data = `{ "percentageId": ${id}}`
+    console.log('data', data)
+    xhttp.setRequestHeader("Content-type", "application/json");
+    xhttp.send(data);     
+}
+
+function add(){
+    const xhttp = new XMLHttpRequest();
+    xhttp.onload = function () {
+        result = JSON.parse(this.responseText)
+        if(result.status==='ok'){
+            alert('Elemento agregado')
+            window.location.reload();
+        } else {
+            alert('Algo fue mal: ' + result.status)
+        }
+    }
+    xhttp.open("POST", "/api/ponderados", true);
+    data = '{ "concept": "'+$('#conceptId').val()+'", "supplier": "'+$('#supplierId').val()+'", "name": "'+$('#name').val() +'"}'
+    console.log('data', data)
+    xhttp.setRequestHeader("Content-type", "application/json");
+    xhttp.send(data); 
+}
+</script>
+{% endblock javascripts %}

@@ -1,0 +1,273 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} P&oacute;liza de ventas {% endblock %} 
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+<!-- Specific Page JS goes HERE  -->
+
+{% block content %}
+
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- [ breadcrumb ] start -->
+        <div class="page-header">
+            <div class="page-block">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <div class="page-header-title">
+                            <h5 class="m-b-10">P&oacute;lizas</h5>
+                        </div>
+                        <ul class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>
+                            <li class="breadcrumb-item"><a href="#">P&oacute;liza ventas</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ breadcrumb ] end -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- [ Main Content ] start -->
+                <div class="row">
+                    <!-- [ basic-table ] start -->
+                    <div class="col-xl-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="d-block ">P&oacute;lizas de ventas </h5>
+                                <span class="m-t-5">Revisi&oacute;n de las p&oacute;lizas de venta para su procesamiento</span>
+                                <div style="display: block;">
+                                    <form method="GET">
+                                        <table class="table table-hover">
+                                            <tr>
+                                                <td><label for="doctypecoi">Tipo p&oacute;liza COI</label></td>
+                                                <td><label for="lastperiod">Ultimo per&iacute;odo</label></td>
+                                                <td><label for="doctypesae">Tipo p&oacute;liza SAE</label></td>
+                                                <td><label for="datefrom">Desde</label></td>
+                                                <td><label for="datto">Hasta</label></td>
+                                                <td><label for="action">&nbsp;</label></td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <select id="doctypecoi" name="doctypecoi" disabled>
+                                                        <option value="-1">SELECCIONA</option>
+                                                        {% for option in doctypescoi %}
+                                                        {% if option['TIPO'] in 'Dr' %}
+                                                        <option selected value="{{option['TIPO']}}">{{option['DESCRIP']}}</option>
+                                                        {% else %}
+                                                        <option value="{{option['TIPO']}}">{{option['DESCRIP']}}</option>
+                                                        {% endif %}
+                                                        {% endfor %}
+                                                    </select>            
+                                                </td>
+                                                <td>
+                                                    <h5>{{lastperiod[0]['EJERCICIO']}} - {{lastperiod[0]['PERIODO']}}</h5>
+                                                    <!-- <input type="text" id="lastperiod" name="lastperiod" disabled="true"> -->
+                                                </td>
+                                                <td>
+                                                    <select id="doctypesae" name="doctypesae" disabled>
+                                                        <option value="-1">SELECCIONA</option>
+                                                        {% for option in doctypessae %}
+                                                        {% if option['TIPO'] in 'V' %}
+                                                        <option selected value="{{option['TIPO']}}">{{option['DESCRIP']}}</option>
+                                                        {% else %}
+                                                        <option value="{{option['TIPO']}}">{{option['DESCRIP']}}</option>
+                                                        {% endif %}
+                                                        {% endfor %}
+                                                    </select>                                                    
+                                                </td>
+                                                <td>
+                                                    <input type="date" name="datefrom" id="datefrom" value="{{date_from}}">
+                                                </td>
+                                                <td>
+                                                    <input type="date" name="dateto" id="dateto" value="{{date_to}}">
+                                                </td>
+                                               <td style="text-align: right;">
+                                                    <button type="button" class="btn btn-primary" onclick="search()">Cargar</button>
+                                               </td> 
+                                            </tr>
+                                        </table>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-block table-border-style">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Cuenta contable - Departamento - Centro costo - Descripci&oacute;n</th>
+                                            <th>Fecha</th>
+                                            <th>Moneda</th>
+                                            <th>Tipo cambio</th>
+                                            <th>Debe</th>
+                                            <th>Haber</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for document in data %}                                            
+                                        <!-- <tr name="{{ document['id'] }}" id="ponderado_{{document['id']}}" onclick="location.replace('/ponderado_detalle?weighted={{document['id']}}');"></tr> -->
+                                        <tr name="{{ document['CVE_DOC'] }}" id="ponderado_{{document['CVE_DOC']}}">
+                                            <td>
+                                                <!-- 
+                                                <select id="baseaccount" name="baseaccount">
+                                                    <option value="-1">SELECCIONA</option>
+                                                {% for option in baseaccounts %}
+                                                    {% if document['CUENTA_CONTABLE'] in option['NUM_CTA_FORMAT'] %}
+                                                        <option value="{{ option['NUM_CTA'] }}" selected>{{ option['NUM_CTA'] }} - {{ option['NOMBRE'] }}</option>
+                                                    {% elif '1190005000' in option['NUM_CTA']  %}
+                                                        <option value="{{ option['NUM_CTA'] }}" selected>{{ option['NUM_CTA'] }} - {{ option['NOMBRE'] }}</option>
+                                                    {% else %}
+                                                        <option value="{{ option['NUM_CTA'] }}">{{ option['NUM_CTA'] }} - {{ option['NOMBRE'] }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                </select>
+                                                -->
+                                                {% if document['CUENTA_CONTABLE'] in '' %}
+                                                <input type="text" value="1190-005-000" readonly/>
+                                                {% else %}
+                                                <input type="text" value="{{ document['CUENTA_CONTABLE'] }}" readonly/>
+                                                {% endif %}
+                                                <select id="divisioncoi" name="divisioncoi">
+                                                    <option value="-1">SELECCIONA</option>                                                    
+                                                {% for option in divisionscoi %}                                                    
+                                                    {% if document['items'][0]['LIBRE2'] in option['DESCRIP'] %}
+                                                    <option selected value="{{ option['DEPTO'] }}">{{ option['DESCRIP']}}</option>
+                                                    {% else %}
+                                                    <option value="{{ option['DEPTO'] }}">{{ option['DESCRIP']}}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                </select>
+                                                &nbsp;&nbsp;&nbsp;&nbsp;{{ document['items'][0]['CENTRO_COSTOS'] }}
+                                                <p>{{ "Doc. %s, %s %s %s" % (document['IDENTIFICADOR'], document['FECHA_DOC'], document['CVE_CLPV'], document['NOMBRE'])   }}
+                                                </p>
+                                            </td>
+                                            <td>{{ document['FECHA_DOC'] }}</td>
+                                            <td>{{ document['MONEDA'] }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(document['TIPO_CAMBIO']) }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(document['IMPORTE']) }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(0) }}</td>
+                                        </tr>
+                                            {% for item in document['items'] %}
+                                            <tr name="{{ document['CVE_DOC'] }}" id="ponderado_{{document['CVE_DOC']}}">
+                                                <td>
+                                                    <!--
+                                                    <select id="baseaccount" name="baseaccount">
+                                                        <option value="-1">SELECCIONA</option>
+                                                        {% for option in baseaccounts %}
+                                                            {% if option['NUM_CTA'] in item['CUENTA_CONTABLE'] %}
+                                                            <option value="{{ option['NUM_CTA'] }}" selected>{{ option['NUM_CTA'] }} - {{ option['NOMBRE'] }}</option>
+                                                            {% else %}
+                                                            <option value="{{ option['NUM_CTA'] }}">{{ option['NUM_CTA'] }} - {{ option['NOMBRE'] }}</option>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                -->
+                                                {% if item['CUENTA_CONTABLE'] in '' %}
+                                                <input type="text" value="1190-005-000" readonly/>
+                                                {% else %}
+                                                <input type="text" value="{{ item['CUENTA_CONTABLE'] }}" readonly/>
+                                                {% endif %}
+                                                    <select id="divisioncoi" name="divisioncoi">
+                                                        <option value="-1">SELECCIONA</option>                                                    
+                                                        {% for option in divisionscoi %}                                                    
+                                                            {% if item['LIBRE2'] in option['DESCRIP'] %}
+                                                            <option selected value="{{ option['DEPTO'] }}">{{ option['DESCRIP']}}</option>
+                                                            {% else %}
+                                                            <option value="{{ option['DEPTO'] }}">{{ option['DESCRIP']}}</option>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                    &nbsp;&nbsp;&nbsp;&nbsp;{{ item['CENTRO_COSTOS'] }}
+                                                    <p>
+                                                    {{ "Costo de ventas. Doc. %s %s %s %s" % (document['CVE_DOC'], document['FECHA_DOC'], item['CVE_ART'], item['DESCRIPCION']) }}
+                                                    </p>
+                                                </td>
+                                                <td>{{ document['FECHA_DOC'] }}</td>
+                                                <td>{{ document['MONEDA'] }}</td>
+                                                <td style="text-align: right;">{{ "{:,.2f}".format(item['TIPO_CAMBIO']) }}</td>                                                
+                                                <td style="text-align: right;">{{ "{:,.2f}".format(0) }}</td>
+                                                <td style="text-align: right;">{{ "{:,.2f}".format(item['IMPORTE']) }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% endfor %}
+                                </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>
+                                                {% if data | length > 0 %}
+                                                <span>Se utilizará el siguiente folio: <label id="number_invoice">{{ next_folio }}</label></span>
+                                                <button type="button" class="btn btn-primary" onclick="process()">Procesar</button>
+                                                {% endif %}
+                                            </td>
+                                            <td colspan="3" style="font-weight: bolder;text-align: right;">TOTALES:</td>
+                                            <td>
+                                                <label>{{ "{:,.2f}".format(data | sum(attribute='IMPORTE')) }}</label>
+                                            </td>
+                                            <td>
+                                                <label>{{ "{:,.2f}".format(data | sum(attribute='IMPORTE')) }}</label>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- [ basic-table ] end -->
+                </div>
+                <!-- [ Main Content ] end -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+    function search(){
+        dateFrom = document.getElementById('datefrom').value
+        dateto = document.getElementById('dateto').value
+        //alert('Querying data from '+ dateFrom + ' to ' + dateto)
+        location.replace('/pfacturas?datefrom='+dateFrom+'&dateto='+dateto)
+    }
+    function process(){
+        if (confirm('Estas seguro de procesar las facturas listadas?')){
+            dateFrom = document.getElementById('datefrom').value
+            dateTo = document.getElementById('dateto').value
+            const numberInvoice = document.getElementById('number_invoice').innerText
+            const xhttp = new XMLHttpRequest()
+            xhttp.onload = function() {
+                console.log('===>result.response:  ' + this.status + ' ' + this.readyState)
+                if(this.status=='200'){
+                    // console.log('this.responseText', this.responseText)
+                    result = JSON.parse(this.responseText)
+                    if (result.status==='ok'){
+                        alert(result.details)
+                        location.replace('/pfacturas')
+                    } else {
+                        let mensaje = ''
+                        if (result.details){
+                            mensaje = result.details
+                        }
+                        alert('Algo ha ocurrido y no se completo la petición. ' + mensaje)
+                    }
+                } else {
+                    alert('Ha ocurrido un fallo al procesar la petición: ' + this.status)
+                }
+                $("#overlay").fadeOut(300);
+            }            
+            xhttp.open("POST", "/api/facturas", true)            
+            data = '{"dateFrom":"{{ date_from }}", "dateTo":"{{ date_to }}", "numberInvoice":' + numberInvoice + '}'
+            console.log('sending data:' + data)
+            xhttp.setRequestHeader("Content-type", "application/json")
+            xhttp.send(data)
+        }     
+            
+    }
+</script>
+{% endblock javascripts %}

@@ -1,0 +1,159 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} UI Tables {% endblock %} 
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+<!-- Specific Page JS goes HERE  -->
+
+{% block content %}
+
+<div class="pcoded-content">
+    <div class="pcoded-inner-content">
+        <!-- [ breadcrumb ] start -->
+        <div class="page-header">
+            <div class="page-block">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <div class="page-header-title">
+                            <h5 class="m-b-10">Pagos</h5>
+                        </div>
+                        <ul class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>                            
+                            <li class="breadcrumb-item"><a href="#">Listado de pagos</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- [ breadcrumb ] end -->
+        <div class="main-body">
+            <div class="page-wrapper">
+                <!-- [ Main Content ] start -->
+                <div class="row">
+                    <!-- [ basic-table ] start -->
+                    <div class="col-xl-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="d-block ">Ponderaci&oacute;n de pagos</h5>
+                                <span class="m-t-5">Generaci&oacute;n de p&oacute;lizas para pagos</span>
+                                <div style="display: block;">
+                                    <form method="GET">
+                                        <table class="table table-hover">
+                                            <tr>
+                                                <td colspan="10px"><label for="datefrom">Desde</label></td>
+                                                <td colspan="10px">
+                                                    <input type="date" name="datefrom" id="datefrom" value="{{applied_date}}">
+                                                </td>
+                                                <td colspan="10px"><label for="provider">Proveedor</label></td>
+                                                <td colspan="10px">
+                                                    <select id="supplier" name="supplier">
+                                                        <option value="-1">SELECCIONA</option>                                                        
+                                                    {% for option in suppliers %}
+                                                        {% if supplier == option['CLAVE'] %}
+                                                        <option value="{{ option['CLAVE'] }}" selected>{{ option['NOMBRE'] }}</option>
+                                                        {% else %}
+                                                        <option value="{{ option['CLAVE'] }}">{{ option['NOMBRE'] }}</option>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                    </select>
+                                                </td>
+                                                <td style="text-align: right;">
+                                                    <button type="button" class="btn btn-primary" id="search">Cargar</button>
+                                                </td> 
+                                            </tr>
+                                        </table>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-block table-border-style">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Documento</th>
+                                            <th>Concepto</th>
+                                            <th>Importe</th>
+                                            <th>F. Elaboraci&oacute;n</th>
+                                            <th>Impuesto 1</th>
+                                            <th>Impuesto 2</th>
+                                            <th>Impuesto 3</th>
+                                            <th>Impuesto 4</th>
+                                            <th>&nbsp;</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in data %}                                            
+                                        <tr name="{{ item['DOCTO'] }}" id="ponderado_{{item['DOCTO']}}">                                            
+                                            <td>
+                                                {{ item['NOMBRE'] }}
+                                                <p>
+                                                    <mark>{{ item['FECHA_APLI'] }}&nbsp;&nbsp;&nbsp;</mark>
+                                                    <span class="text-primary mb-1">Docto. &nbsp;</span><span class="text-warning mb-1">{{ item['DOCTO'] }} </span> 
+                                                    <span class="text-success mb-1">&nbsp;Ref. &nbsp;</span><span class="text-warning mb-1">{{ item['REFER'] }} </span>
+                                                </p>
+                                            </td>
+                                            <td>{{ item['DESCR'] }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['IMPORTE']) }}</td>  
+                                            <td>{{ item['FECHAELAB'] }}</td>                         
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['IMPUESTO1']) }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['IMPUESTO2']) }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['IMPUESTO3']) }}</td>
+                                            <td style="text-align: right;">{{ "{:,.2f}".format(item['IMPUESTO4']) }}</td>
+                                            <td><input type="button" class="btn btn-outline-info" id="detail" onclick="detail('{{item['DOCTO']}}')" value="Detalle"></td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="11">
+                                                <div style="float: right;">
+                                                    <button type="button" class="btn btn-outline-info" id="refresh">Actualizar</button>
+                                                    <button type="button" class="btn btn-outline-secondary" id="clean">Limpiar</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tfoot>                                     
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                <!-- [ basic-table ] end -->
+                </div>
+                <!-- [ Main Content ] end -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+    $( window ).blur(function() {
+        location.reload()
+    })
+    $( document ).ready(function() {
+        var dateFrom = $("#datefrom"),
+            supplier = $("#supplier");
+
+        $("#refresh").on('click', () => {
+            location.reload()
+        })
+        $("#search").on('click', () => {
+            location.replace('/pagos?datefrom='+dateFrom.val()+'&supplier='+supplier.val())    
+        })
+        $("#clean").on('click', () => {
+            location.replace('/pagos')
+        })
+
+    })
+    function detail(docto) {
+        window.open('/pagos/'+docto+'/ponderado', '_blank')
+    }
+</script>
+{% endblock javascripts %}
